@@ -31,7 +31,11 @@ import {
   LYRICS_STYLE_PRESETS,
   applyLyricsStylePreset,
   calculateLyricsTransitionOpacity,
-  ensureProjectLyricsStylePresets
+  createLyricsStylePresetFromLayer,
+  ensureProjectLyricsStylePresets,
+  isBuiltInLyricsStylePreset,
+  removeProjectLyricsStylePreset,
+  upsertProjectLyricsStylePreset
 } from './lyrics-styles.js';
 import {
   VISUALIZER_STYLE_PRESETS,
@@ -127,6 +131,10 @@ const state = {
   lastExport: null,
   exportHistory: [],
   visualizerLibrary: {
+    presets: [],
+    path: ''
+  },
+  lyricsStyleLibrary: {
     presets: [],
     path: ''
   },
@@ -632,7 +640,10 @@ async function applyLoadedProject(payload) {
   setLoadingSplashMessage('Loading project fonts');
   await loadProjectFontFaces();
   setLoadingSplashMessage('Loading visual presets');
-  await loadVisualizerPresetLibrary();
+  await Promise.all([
+    loadVisualizerPresetLibrary(),
+    loadLyricsStylePresetLibrary()
+  ]);
   state.renderProject = buildRenderProject();
 
   setLoadingSplashMessage('Opening workspace');
@@ -2605,6 +2616,20 @@ async function loadVisualizerPresetLibrary() {
   }
 }
 
+async function loadLyricsStylePresetLibrary() {
+  try {
+    const response = await fetch('/api/lyrics-style-presets');
+    if (!response.ok) throw new Error(await response.text());
+    const payload = await response.json();
+    state.lyricsStyleLibrary = {
+      presets: payload.library?.presets || [],
+      path: payload.libraryPath || ''
+    };
+  } catch {
+    state.lyricsStyleLibrary = { presets: [], path: '' };
+  }
+}
+
 async function loadProjectLyrics() {
   const lyricsAsset = getLyricsAsset();
   state.lyrics.status = 'idle';
@@ -2931,15 +2956,39 @@ function renderInspector() {
       (value) => applySelectedLyricsStyle(value),
       (value) => getProjectLyricsStylePresets().find((preset) => preset.id === value)?.name || value
     );
+    addButtonRow([
+      ['Save New', saveSelectedLyricsStylePreset],
+      ['Update', updateSelectedLyricsStylePreset],
+      ['Delete', deleteSelectedLyricsStylePreset],
+      ['Reset', resetSelectedLyricsStylePreset]
+    ]);
     addFontFamilyField('Font', layer.properties.fontFamily || '', (value) => updateProperties({ fontFamily: value }));
     addNumberField('Font Size', layer.properties.fontSize || 48, (value) => updateProperties({ fontSize: value }));
     addColorField('Color', layer.properties.color || '#ffffff', (value) => updateProperties({ color: value }));
     addSelectField('Align', layer.properties.align || 'center', ['left', 'center', 'right'], (value) => updateProperties({ align: value }));
+    addNumberField('Line Height', layer.properties.lineHeight ?? 1.18, (value) => updateProperties({ lineHeight: Math.max(0.5, value) }), { step: 0.01 });
     addNumberField('Max Lines', layer.properties.maxLines || 2, (value) => updateProperties({ maxLines: Math.max(1, Math.round(value)) }));
+
+    addSection('Backdrop');
     addColorField('Background', layer.properties.backgroundColor || '#000000', (value) => updateProperties({ backgroundColor: value }));
     addNumberField('Bg Opacity', layer.properties.backgroundOpacity ?? 0.55, (value) => updateProperties({ backgroundOpacity: clamp(value, 0, 1) }), { step: 0.01 });
     addNumberField('Padding', layer.properties.padding || 0, (value) => updateProperties({ padding: Math.max(0, value) }));
-    addNumberField('Stroke', layer.properties.strokeWidth || 0, (value) => updateProperties({ strokeWidth: Math.max(0, value) }));
+    addNumberField('Radius', layer.properties.radius || 0, (value) => updateProperties({ radius: Math.max(0, value) }));
+
+    addSection('Outline & Glow');
+    addColorField('Outline Color', layer.properties.strokeColor || '#000000', (value) => updateProperties({ strokeColor: value }));
+    addNumberField('Outline Width', layer.properties.strokeWidth || 0, (value) => updateProperties({ strokeWidth: Math.max(0, value) }), { step: 0.5 });
+    addColorField('Glow Color', getLyricsGlowSettings(layer.properties).color, (value) => updateLegacyAwareLyricsGlow({ glowColor: value }));
+    addNumberField('Glow Blur', getLyricsGlowSettings(layer.properties).blur, (value) => updateLegacyAwareLyricsGlow({ glowBlur: Math.max(0, value) }));
+    addNumberField('Glow Intensity', getLyricsGlowSettings(layer.properties).intensity, (value) => updateLegacyAwareLyricsGlow({ glowIntensity: clamp(value, 0, 2) }), { step: 0.05 });
+
+    addSection('Shadow');
+    addColorField('Shadow Color', getLyricsShadowSettings(layer.properties).color, (value) => updateLegacyAwareLyricsShadow({ shadowColor: value }));
+    addNumberField('Shadow Blur', getLyricsShadowSettings(layer.properties).blur, (value) => updateLegacyAwareLyricsShadow({ shadowBlur: Math.max(0, value) }));
+    addNumberField('Shadow X', getLyricsShadowSettings(layer.properties).offsetX, (value) => updateLegacyAwareLyricsShadow({ shadowOffsetX: value }));
+    addNumberField('Shadow Y', getLyricsShadowSettings(layer.properties).offsetY, (value) => updateLegacyAwareLyricsShadow({ shadowOffsetY: value }));
+
+    addSection('Transition');
     addSelectField('Transition', layer.properties.transition?.type || 'fade', ['fade', 'none'], (value) => updateLyricsTransition({ type: value, enabled: value !== 'none' }));
     addNumberField('Fade In', layer.properties.transition?.fadeIn ?? 0.14, (value) => updateLyricsTransition({ fadeIn: Math.max(0, value) }), { step: 0.01 });
     addNumberField('Fade Out', layer.properties.transition?.fadeOut ?? 0.18, (value) => updateLyricsTransition({ fadeOut: Math.max(0, value) }), { step: 0.01 });
@@ -3955,6 +4004,66 @@ function snapTextLayerPosition(x, y, layout, transform) {
   return { x: nextX, y: nextY };
 }
 
+function getLyricsGlowSettings(properties = {}) {
+  const hasExplicitGlow = ['glowColor', 'glowBlur', 'glowIntensity']
+    .some((key) => Object.prototype.hasOwnProperty.call(properties, key));
+  const hasLegacyShadowOffset = Number(properties.shadowOffsetX || 0) !== 0 ||
+    Number(properties.shadowOffsetY || 0) !== 0;
+  const legacyBlur = hasLegacyShadowOffset ? 0 : Number(properties.shadowBlur || 0);
+  return {
+    color: properties.glowColor || properties.shadowColor || '#000000',
+    blur: Math.max(0, Number(hasExplicitGlow ? properties.glowBlur || 0 : legacyBlur)),
+    intensity: clamp(hasExplicitGlow ? properties.glowIntensity ?? 1 : legacyBlur > 0 ? 1 : 0, 0, 2)
+  };
+}
+
+function getLyricsShadowSettings(properties = {}) {
+  const hasExplicitGlow = ['glowColor', 'glowBlur', 'glowIntensity']
+    .some((key) => Object.prototype.hasOwnProperty.call(properties, key));
+  const offsetX = Number(properties.shadowOffsetX || 0);
+  const offsetY = Number(properties.shadowOffsetY || 0);
+  const legacyActsAsGlow = !hasExplicitGlow && offsetX === 0 && offsetY === 0;
+  return {
+    color: properties.shadowColor || '#000000',
+    blur: Math.max(0, Number(legacyActsAsGlow ? 0 : properties.shadowBlur || 0)),
+    offsetX,
+    offsetY
+  };
+}
+
+function drawLyricsGlyphs(text, x, y, maxWidth) {
+  if (context.lineWidth > 0) context.strokeText(text, x, y, maxWidth);
+  context.fillText(text, x, y, maxWidth);
+}
+
+function drawLyricsGlow(text, x, y, maxWidth, glow) {
+  if (glow.blur <= 0 || glow.intensity <= 0) return;
+  const passes = Math.ceil(glow.intensity);
+  for (let pass = 0; pass < passes; pass += 1) {
+    const passOpacity = Math.min(1, glow.intensity - pass);
+    if (passOpacity <= 0) continue;
+    context.save();
+    context.globalAlpha *= passOpacity;
+    context.shadowColor = glow.color;
+    context.shadowBlur = glow.blur;
+    context.shadowOffsetX = 0;
+    context.shadowOffsetY = 0;
+    drawLyricsGlyphs(text, x, y, maxWidth);
+    context.restore();
+  }
+}
+
+function drawLyricsShadow(text, x, y, maxWidth, shadow) {
+  if (shadow.blur <= 0 && shadow.offsetX === 0 && shadow.offsetY === 0) return;
+  context.save();
+  context.shadowColor = shadow.color;
+  context.shadowBlur = shadow.blur;
+  context.shadowOffsetX = shadow.offsetX;
+  context.shadowOffsetY = shadow.offsetY;
+  drawLyricsGlyphs(text, x, y, maxWidth);
+  context.restore();
+}
+
 function drawLyricsLayer(layer) {
   const transform = layer.transform || {};
   const width = transform.width || 1100;
@@ -3988,12 +4097,12 @@ function drawLyricsLayer(layer) {
   context.font = `${fontSize}px ${cssFont(props.fontFamily || 'Arial')}`;
   context.textAlign = props.align || 'center';
   context.textBaseline = 'middle';
-  context.shadowColor = props.shadowColor || 'transparent';
-  context.shadowBlur = Number(props.shadowBlur || 0);
   context.lineJoin = 'round';
   context.fillStyle = props.color || '#ffffff';
   context.strokeStyle = props.strokeColor || '#000000';
   context.lineWidth = Number(props.strokeWidth || 0);
+  const glow = getLyricsGlowSettings(props);
+  const shadow = getLyricsShadowSettings(props);
 
   const textHeight = (lines.length - 1) * lineHeight;
   const startY = top + height / 2 - textHeight / 2;
@@ -4001,8 +4110,9 @@ function drawLyricsLayer(layer) {
 
   for (let index = 0; index < lines.length; index += 1) {
     const y = startY + index * lineHeight;
-    if (context.lineWidth > 0) context.strokeText(lines[index], x, y, innerWidth);
-    context.fillText(lines[index], x, y, innerWidth);
+    drawLyricsGlow(lines[index], x, y, innerWidth, glow);
+    drawLyricsShadow(lines[index], x, y, innerWidth, shadow);
+    drawLyricsGlyphs(lines[index], x, y, innerWidth);
   }
 }
 
@@ -4506,6 +4616,150 @@ function applySelectedLyricsStyle(styleId) {
   markDirty();
 }
 
+async function saveSelectedLyricsStylePreset() {
+  const layer = getSelectedLayer();
+  if (!layer || layer.type !== 'lyrics') return;
+  const name = window.prompt('Lyrics style name', `${layer.name || 'Lyrics'} Style`);
+  if (name === null) return;
+  const presetName = name.trim();
+  if (!presetName) {
+    setStatus('Lyrics style name is required');
+    return;
+  }
+
+  let preset = createLyricsStylePresetFromLayer(layer, { name: presetName, scope: 'global' });
+  if (getProjectLyricsStylePresets().some((item) => item.id === preset.id)) {
+    preset = createLyricsStylePresetFromLayer(layer, {
+      id: `${preset.id}-${Date.now().toString(36)}`,
+      name: presetName,
+      scope: 'global'
+    });
+  }
+  await persistLyricsStylePreset(layer, preset, `Lyrics style saved: ${preset.name}`);
+}
+
+async function updateSelectedLyricsStylePreset() {
+  const layer = getSelectedLayer();
+  if (!layer || layer.type !== 'lyrics') return;
+  const presetId = layer.properties.styleId || '';
+  if (!presetId || isBuiltInLyricsStylePreset(presetId)) {
+    setStatus('Built-in lyrics styles are protected. Use Save New.');
+    return;
+  }
+  const existing = getProjectLyricsStylePresets().find((preset) => preset.id === presetId);
+  if (!existing?.custom) {
+    setStatus('Only custom lyrics styles can be updated.');
+    return;
+  }
+  const preset = createLyricsStylePresetFromLayer(layer, {
+    id: presetId,
+    name: existing.name,
+    scope: 'global',
+    createdAt: existing.createdAt
+  });
+  await persistLyricsStylePreset(layer, preset, `Lyrics style updated: ${preset.name}`);
+}
+
+async function deleteSelectedLyricsStylePreset() {
+  const layer = getSelectedLayer();
+  if (!layer || layer.type !== 'lyrics') return;
+  const presetId = layer.properties.styleId || '';
+  const preset = getProjectLyricsStylePresets().find((item) => item.id === presetId);
+  if (!preset || isBuiltInLyricsStylePreset(presetId) || !preset.custom) {
+    setStatus('Built-in lyrics styles cannot be deleted.');
+    return;
+  }
+  if (!window.confirm(`Delete the global lyrics style "${preset.name}"?`)) return;
+
+  try {
+    const response = await fetch('/api/lyrics-style-presets', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: presetId })
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const payload = await response.json();
+    state.lyricsStyleLibrary = {
+      presets: payload.library?.presets || [],
+      path: payload.libraryPath || ''
+    };
+    state.project = removeProjectLyricsStylePreset(state.project, presetId);
+    state.project = updateLayer(state.project, layer.id, applyLyricsStylePreset(layer, 'noir-card'));
+    markDirty();
+    setStatus(`Lyrics style deleted: ${preset.name}`);
+  } catch (error) {
+    setStatus(`Lyrics style delete failed: ${error.message || error}`);
+  }
+}
+
+function resetSelectedLyricsStylePreset() {
+  const layer = getSelectedLayer();
+  if (!layer || layer.type !== 'lyrics') return;
+  applySelectedLyricsStyle(layer.properties.styleId || 'noir-card');
+  setStatus('Lyrics style values restored from preset');
+}
+
+async function persistLyricsStylePreset(layer, preset, successMessage) {
+  try {
+    const response = await fetch('/api/lyrics-style-presets', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ preset })
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const payload = await response.json();
+    state.lyricsStyleLibrary = {
+      presets: payload.library?.presets || [],
+      path: payload.libraryPath || ''
+    };
+    state.project = upsertProjectLyricsStylePreset(state.project, preset);
+    state.project = updateLayer(state.project, layer.id, {
+      properties: {
+        ...(layer.properties || {}),
+        styleId: preset.id
+      }
+    });
+    markDirty();
+    setStatus(successMessage);
+  } catch (error) {
+    setStatus(`Lyrics style save failed: ${error.message || error}`);
+  }
+}
+
+function updateLegacyAwareLyricsGlow(patch) {
+  const layer = getSelectedLayer();
+  if (!layer || layer.type !== 'lyrics') return;
+  const glow = getLyricsGlowSettings(layer.properties || {});
+  const shadow = getLyricsShadowSettings(layer.properties || {});
+  updateProperties({
+    glowColor: glow.color,
+    glowBlur: glow.blur,
+    glowIntensity: glow.intensity,
+    shadowColor: shadow.color,
+    shadowBlur: shadow.blur,
+    shadowOffsetX: shadow.offsetX,
+    shadowOffsetY: shadow.offsetY,
+    ...patch
+  });
+}
+
+function updateLegacyAwareLyricsShadow(patch) {
+  const layer = getSelectedLayer();
+  if (!layer || layer.type !== 'lyrics') return;
+  const glow = getLyricsGlowSettings(layer.properties || {});
+  const shadow = getLyricsShadowSettings(layer.properties || {});
+  updateProperties({
+    glowColor: glow.color,
+    glowBlur: glow.blur,
+    glowIntensity: glow.intensity,
+    shadowColor: shadow.color,
+    shadowBlur: shadow.blur,
+    shadowOffsetX: shadow.offsetX,
+    shadowOffsetY: shadow.offsetY,
+    ...patch
+  });
+}
+
 function applySelectedTextStyle(styleId) {
   const layer = getSelectedLayer();
   if (!layer || layer.type !== 'text') return;
@@ -4685,9 +4939,14 @@ function buildPreviewScenes() {
 }
 
 function getProjectLyricsStylePresets() {
-  return Array.isArray(state.project?.metadata?.lyricsStylePresets)
+  const projectPresets = Array.isArray(state.project?.metadata?.lyricsStylePresets)
     ? state.project.metadata.lyricsStylePresets
     : LYRICS_STYLE_PRESETS;
+  const byId = new Map(projectPresets.map((preset) => [preset.id, preset]));
+  for (const preset of state.lyricsStyleLibrary.presets || []) {
+    byId.set(preset.id, preset);
+  }
+  return [...byId.values()];
 }
 
 function getProjectTextStylePresets() {

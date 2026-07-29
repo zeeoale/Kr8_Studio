@@ -88,6 +88,11 @@ import {
   upsertVisualizerPresetInLibrary
 } from '../visualizer/library.js';
 import {
+  deleteLyricsStylePresetFromLibrary,
+  loadLyricsStylePresetLibrary,
+  upsertLyricsStylePresetInLibrary
+} from '../lyrics/library.js';
+import {
   applyProjectTemplate,
   createProjectTemplateFromProject,
   loadProjectTemplateLibrary,
@@ -107,6 +112,7 @@ const serviceVersion = String(packageMetadata.version || 'unknown');
 const publicDir = path.join(projectRoot, 'src', 'editor', 'public');
 const defaultProjectPath = path.join(projectRoot, 'examples', 'blank.kr8', 'project.json');
 const visualizerPresetLibraryPath = path.join(projectRoot, 'presets', 'visualizers', 'library.json');
+const lyricsStylePresetLibraryPath = path.join(projectRoot, 'presets', 'lyrics', 'library.json');
 const projectTemplateLibraryPath = path.join(projectRoot, 'presets', 'project-templates', 'library.json');
 let coverLabWorkflowPath = path.join(projectRoot, 'workflow', 'Kr8_Cover_Workflow_API.json');
 const defaultJsonBodyLimit = 10_000_000;
@@ -1459,6 +1465,38 @@ async function routeRequest(request, response) {
       saved: true,
       library,
       libraryPath: visualizerPresetLibraryPath
+    });
+    return;
+  }
+
+  if (request.method === 'GET' && url.pathname === '/api/lyrics-style-presets') {
+    sendJson(response, 200, {
+      library: await loadLyricsStylePresetLibrary(lyricsStylePresetLibraryPath),
+      libraryPath: lyricsStylePresetLibraryPath
+    });
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/lyrics-style-presets') {
+    const body = await readRequestBody(request);
+    const payload = JSON.parse(body || '{}');
+    const library = await upsertLyricsStylePresetInLibrary(lyricsStylePresetLibraryPath, payload.preset);
+    sendJson(response, 200, {
+      saved: true,
+      library,
+      libraryPath: lyricsStylePresetLibraryPath
+    });
+    return;
+  }
+
+  if (request.method === 'DELETE' && url.pathname === '/api/lyrics-style-presets') {
+    const body = await readRequestBody(request);
+    const payload = JSON.parse(body || '{}');
+    const library = await deleteLyricsStylePresetFromLibrary(lyricsStylePresetLibraryPath, payload.id);
+    sendJson(response, 200, {
+      deleted: true,
+      library,
+      libraryPath: lyricsStylePresetLibraryPath
     });
     return;
   }

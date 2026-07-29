@@ -234,16 +234,48 @@ function drawText(layer, transform, text, lyrics = false) {
   canvasContext.fillStyle = props.color || '#fff';
   canvasContext.strokeStyle = props.strokeColor || '#000';
   canvasContext.lineWidth = Number(props.strokeWidth || 0);
-  canvasContext.shadowColor = props.shadowColor || 'transparent';
-  canvasContext.shadowBlur = Number(props.shadowBlur || 0);
+  const hasExplicitGlow = lyrics && ['glowColor', 'glowBlur', 'glowIntensity']
+    .some((key) => Object.prototype.hasOwnProperty.call(props, key));
+  const shadowOffsetX = Number(props.shadowOffsetX || 0);
+  const shadowOffsetY = Number(props.shadowOffsetY || 0);
+  const legacyGlow = lyrics && !hasExplicitGlow && shadowOffsetX === 0 && shadowOffsetY === 0;
+  const glowBlur = lyrics ? Math.max(0, Number(hasExplicitGlow ? props.glowBlur || 0 : legacyGlow ? props.shadowBlur || 0 : 0)) : 0;
+  const glowIntensity = lyrics ? clamp(hasExplicitGlow ? props.glowIntensity ?? 1 : glowBlur > 0 ? 1 : 0, 0, 2) : 0;
+  canvasContext.shadowColor = lyrics ? 'transparent' : props.shadowColor || 'transparent';
+  canvasContext.shadowBlur = lyrics ? 0 : Number(props.shadowBlur || 0);
   const x = props.align === 'left' ? left + 18 : props.align === 'right' ? left + transform.width - 18 : 0;
-  const lines = wrapText(text, Math.max(40, transform.width - 36), 2);
-  const lineHeight = fontSize * 1.14;
+  const lines = wrapText(text, Math.max(40, transform.width - 36), Math.max(1, Number(props.maxLines || 2)));
+  const lineHeight = fontSize * Number(props.lineHeight || 1.14);
   const startY = -(lines.length - 1) * lineHeight / 2;
   lines.forEach((line, index) => {
     const y = startY + index * lineHeight;
-    if (canvasContext.lineWidth > 0) canvasContext.strokeText(line, x, y, transform.width - 36);
-    canvasContext.fillText(line, x, y, transform.width - 36);
+    const drawGlyphs = () => {
+      if (canvasContext.lineWidth > 0) canvasContext.strokeText(line, x, y, transform.width - 36);
+      canvasContext.fillText(line, x, y, transform.width - 36);
+    };
+    if (lyrics && glowBlur > 0 && glowIntensity > 0) {
+      const passes = Math.ceil(glowIntensity);
+      for (let pass = 0; pass < passes; pass += 1) {
+        canvasContext.save();
+        canvasContext.globalAlpha *= Math.min(1, glowIntensity - pass);
+        canvasContext.shadowColor = props.glowColor || props.shadowColor || '#000';
+        canvasContext.shadowBlur = glowBlur;
+        canvasContext.shadowOffsetX = 0;
+        canvasContext.shadowOffsetY = 0;
+        drawGlyphs();
+        canvasContext.restore();
+      }
+    }
+    if (lyrics && !legacyGlow && (Number(props.shadowBlur || 0) > 0 || shadowOffsetX !== 0 || shadowOffsetY !== 0)) {
+      canvasContext.save();
+      canvasContext.shadowColor = props.shadowColor || '#000';
+      canvasContext.shadowBlur = Math.max(0, Number(props.shadowBlur || 0));
+      canvasContext.shadowOffsetX = shadowOffsetX;
+      canvasContext.shadowOffsetY = shadowOffsetY;
+      drawGlyphs();
+      canvasContext.restore();
+    }
+    drawGlyphs();
   });
 }
 

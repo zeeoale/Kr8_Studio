@@ -131,7 +131,13 @@ function sanitizeLayerProperties(type, properties = {}) {
       'text', 'fontFamily', 'fontSize', 'align', 'strokeColor', 'strokeWidth', 'shadowColor', 'shadowBlur',
       'typographyPresetId', 'typography', 'lineEditing', 'textEffects', 'textureMask'
     ],
-    lyrics: ['fontFamily', 'fontSize', 'align', 'strokeColor', 'strokeWidth', 'shadowColor', 'shadowBlur', 'maxLines'],
+    lyrics: [
+      'fontFamily', 'fontSize', 'color', 'align', 'lineHeight', 'maxLines',
+      'backgroundColor', 'backgroundOpacity', 'padding', 'radius',
+      'strokeColor', 'strokeWidth',
+      'glowColor', 'glowBlur', 'glowIntensity',
+      'shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY'
+    ],
     image: [],
     video: ['loop', 'startOffset', 'playbackRate'],
     visualizer: ['bars', 'visualizerType', 'accentColor', 'minFrequency', 'maxFrequency', 'gain', 'sensitivity', 'floor', 'highFrequencyBoost', 'lowFrequencyDamping', 'midFrequencyDamping', 'noiseGate', 'innerRadius', 'outerRadius', 'barThickness', 'arc', 'startAngle', 'mirror']
