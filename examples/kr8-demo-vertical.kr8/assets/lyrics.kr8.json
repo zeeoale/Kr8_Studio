@@ -1,0 +1,57 @@
+{
+  "kr8LyricsVersion": 1,
+  "lines": [
+    {
+      "id": "lyric_import_srt_1",
+      "index": 1,
+      "startSeconds": 0,
+      "endSeconds": 4,
+      "text": "Create the rhythm"
+    },
+    {
+      "id": "lyric_import_srt_2",
+      "index": 2,
+      "startSeconds": 4.2,
+      "endSeconds": 8,
+      "text": "Shape the image"
+    },
+    {
+      "id": "lyric_import_srt_3",
+      "index": 3,
+      "startSeconds": 8.2,
+      "endSeconds": 12,
+      "text": "Synchronize every word"
+    },
+    {
+      "id": "lyric_import_srt_4",
+      "index": 4,
+      "startSeconds": 12.2,
+      "endSeconds": 17,
+      "text": "Make the sound visible"
+    },
+    {
+      "id": "lyric_import_srt_5",
+      "index": 5,
+      "startSeconds": 17.2,
+      "endSeconds": 22,
+      "text": "Build your own visual language"
+    },
+    {
+      "id": "lyric_import_srt_6",
+      "index": 6,
+      "startSeconds": 22.2,
+      "endSeconds": 27,
+      "text": "From one local workspace"
+    },
+    {
+      "id": "lyric_import_srt_7",
+      "index": 7,
+      "startSeconds": 27.2,
+      "endSeconds": 30,
+      "text": "Kr8 Studio"
+    }
+  ],
+  "kr8Source": {
+    "assetId": "kr8_217df206e45984bc"
+  }
+}

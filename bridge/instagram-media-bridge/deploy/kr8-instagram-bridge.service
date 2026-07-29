@@ -1,0 +1,22 @@
+[Unit]
+Description=Kr8 Instagram temporary media bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kr8bridge
+Group=kr8bridge
+WorkingDirectory=/opt/kr8-instagram-media-bridge
+EnvironmentFile=/opt/kr8-instagram-media-bridge/.env
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/kr8-instagram-media-bridge/data
+
+[Install]
+WantedBy=multi-user.target

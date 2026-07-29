@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kr8 Publish</title>
+    <link rel="stylesheet" href="/publish/publish.css">
+  </head>
+  <body>
+    <div class="publish-shell">
+      <header>
+        <div class="brand"><strong>Kr8 Publish</strong><span id="projectName">Loading project...</span></div>
+        <button id="closeButton" type="button" aria-label="Close">X</button>
+      </header>
+
+      <main>
+        <section id="providerBand" class="provider-band">
+          <div id="providerMark" class="provider-mark" aria-hidden="true">T</div>
+          <div><label for="providerSelect">Provider</label><select id="providerSelect"><option value="tiktok">TikTok - Upload as Draft</option><option value="youtube">YouTube - Upload Video</option><option value="instagram">Instagram - Publish Reel or Story</option></select><small id="providerSubtitle">Upload as Draft &middot; Sandbox</small></div>
+          <span id="connectionBadge" class="status-badge disconnected">Not connected</span>
+        </section>
+
+        <div class="publish-grid">
+          <section class="panel">
+            <div class="section-heading"><h1>Source Reel</h1><span id="validationBadge" class="status-badge">Checking</span></div>
+            <dl class="source-grid">
+              <dt>File</dt><dd id="sourceName">No Reel available</dd>
+              <dt>Path</dt><dd id="sourcePath" class="path">-</dd>
+              <dt>Duration</dt><dd id="sourceDuration">-</dd>
+              <dt>Size</dt><dd id="sourceSize">-</dd>
+              <dt>Video</dt><dd id="sourceVideo">-</dd>
+              <dt>Audio</dt><dd id="sourceAudio">-</dd>
+            </dl>
+            <p id="validationMessage" class="message neutral">Checking the latest exported Reel...</p>
+          </section>
+
+          <section class="panel account-panel">
+            <div class="section-heading"><h1 id="accountHeading">TikTok Account</h1></div>
+            <div class="account-row">
+              <div class="avatar-frame"><img id="accountAvatar" alt="" referrerpolicy="no-referrer" hidden><span id="avatarFallback">TK</span></div>
+              <div class="account-copy"><strong id="accountName">Not connected</strong><span id="accountDetail">Connect the account used for publishing.</span></div>
+            </div>
+            <div class="button-row">
+              <button id="connectButton" class="primary" type="button">Connect TikTok</button>
+              <button id="reconnectButton" type="button" hidden>Reconnect TikTok</button>
+              <button id="disconnectButton" type="button" hidden>Disconnect TikTok</button>
+              <button id="refreshTokenButton" type="button" hidden>Refresh token now</button>
+            </div>
+            <p id="connectionMessage" class="message neutral">Authorization opens in your default browser.</p>
+            <a id="authorizationLink" class="oauth-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Open authorization page</a>
+          </section>
+        </div>
+
+        <section class="panel compose-panel">
+          <div id="tiktokFields">
+            <label for="captionInput"><span>Caption handoff <small>copied for the TikTok mobile editor</small></span></label>
+            <textarea id="captionInput" maxlength="2200" rows="3" placeholder="Write the caption to paste in TikTok..."></textarea>
+            <div class="caption-meta">
+              <span>TikTok Draft API transfers the video only; it cannot set the final caption.</span>
+              <div class="caption-tools"><span id="captionCopyStatus" aria-live="polite"></span><output id="captionCount">0 / 2200</output><button id="copyCaptionButton" type="button">Copy Caption</button></div>
+            </div>
+          </div>
+          <div id="youtubeFields" class="youtube-fields" hidden>
+            <label for="titleInput">Title <strong>required</strong></label><input id="titleInput" maxlength="100" type="text">
+            <label for="descriptionInput">Description</label><textarea id="descriptionInput" maxlength="5000" rows="4"></textarea>
+            <label for="tagsInput">Tags <small>comma separated</small></label><input id="tagsInput" type="text" placeholder="music, visualizer">
+            <div class="field-grid">
+              <label>Privacy<select id="privacyInput"><option value="private">Private</option><option value="unlisted">Unlisted</option><option value="public">Public</option></select></label>
+              <label>Category<select id="categoryInput"><option value="10">Music</option><option value="22">People &amp; Blogs</option><option value="24">Entertainment</option></select></label>
+              <label>Made for kids<select id="kidsInput"><option value="no">No</option><option value="yes">Yes</option></select></label>
+              <label>AI-generated or meaningfully altered realistic content<select id="syntheticInput"><option value="yes">Yes</option><option value="no">No</option></select></label>
+              <label>Thumbnail <small>optional, JPG/PNG, max 2 MB</small><input id="thumbnailInput" type="file" accept="image/jpeg,image/png"></label>
+            </div>
+            <div id="youtubeShortsWarning" class="youtube-shorts-warning" role="status" hidden></div>
+          </div>
+          <div id="instagramFields" class="instagram-fields" hidden>
+            <label>Destination<select id="instagramDestination"><option value="reel">Reel</option><option value="story">Story</option></select></label>
+            <label id="instagramCaptionLabel">Caption<textarea id="instagramCaption" maxlength="2200" rows="3" placeholder="Write the Instagram Reel caption..."></textarea><small id="instagramCaptionCount">0 / 2200</small></label>
+            <label id="shareToFeedLabel">Share to Feed<select id="shareToFeedInput"><option value="yes">Yes</option><option value="no">No</option></select></label>
+            <div id="instagramDurationMessage" class="message neutral">Duration will be checked against the selected destination.</div>
+            <label id="publishAnywayRow" class="confirm-row warning-confirm" hidden><input id="publishAnywayInput" type="checkbox"><span>Publish anyway</span></label>
+          </div>
+          <div id="uploadWarning" class="draft-warning">
+            <strong id="uploadWarningTitle">Upload as Draft</strong>
+            <p id="uploadWarningText">This video will be uploaded to TikTok as a draft. Complete editing and publishing in the TikTok mobile app.</p>
+          </div>
+          <label class="confirm-row"><input id="confirmationInput" type="checkbox"><span id="confirmationText">I confirm that I want to upload this Reel to the connected TikTok account as a draft.</span></label>
+        </section>
+
+        <section id="progressPanel" class="panel progress-panel" hidden>
+          <div class="section-heading"><h1>Upload</h1><strong id="uploadState">Preparing</strong></div>
+          <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
+          <div class="progress-stats">
+            <span id="progressBytes">0 MB / 0 MB</span>
+            <span id="progressSpeed">0 MB/s</span>
+            <span id="progressEta">ETA -</span>
+            <span id="progressRetries">Retries 0</span>
+          </div>
+          <p id="uploadMessage" class="message neutral"></p>
+          <p id="privacyResult" class="message neutral" hidden></p>
+          <a id="openVideoLink" class="open-video-link" href="#" target="_blank" rel="noopener" hidden>Open published video</a>
+        </section>
+      </main>
+
+      <footer>
+        <span id="statusText">Loading publisher...</span>
+        <div class="button-row">
+          <button id="cancelButton" type="button" disabled>Cancel</button>
+          <button id="uploadButton" class="primary" type="button" disabled>Upload Draft</button>
+        </div>
+      </footer>
+    </div>
+    <script type="module" src="/publish/publish.js"></script>
+  </body>
+</html>

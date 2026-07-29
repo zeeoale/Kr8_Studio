@@ -1,0 +1,20 @@
+Kr8 Studio
+Copyright (C) 2026 zeeoale
+
+Kr8 Studio source code is licensed under the GNU Affero General Public License
+version 3 or later. See LICENSE.
+
+Separate commercial licensing may be available. See COMMERCIAL-LICENSE.md.
+
+The source-code license does not grant rights to Kr8 Studio, TKMusic, or Takara
+branding, official logos, promotional artwork, or other separately licensed
+assets. See TRADEMARKS.md and ASSET-LICENSE.md.
+
+Runtime dependencies:
+
+- MP4Box.js, BSD-3-Clause
+- Undici, MIT
+
+FFmpeg and FFprobe are external tools and are not distributed by this
+repository. Their applicable license depends on the build obtained by the user.
+

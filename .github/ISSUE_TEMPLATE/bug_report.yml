@@ -1,0 +1,64 @@
+name: Bug report
+description: Report a reproducible Kr8 Studio defect
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach credentials, private media, protected music, or unsanitized projects.
+  - type: input
+    id: version
+    attributes:
+      label: Kr8 version or commit
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+    validations:
+      required: true
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU and driver
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+    validations:
+      required: true
+  - type: dropdown
+    id: export
+    attributes:
+      label: Export mode
+      options:
+        - Not related to export
+        - PNG frames
+        - Direct MP4 raw RGBA
+        - Headless MP4
+        - FFmpeg composite
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction
+      description: Include exact steps and expected versus actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Remove tokens, usernames, private paths, URLs, and media metadata.
+  - type: textarea
+    id: project
+    attributes:
+      label: Minimal project
+      description: Describe or link a synthetic, redistributable reproduction only.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I removed secrets and private or protected media.
+          required: true

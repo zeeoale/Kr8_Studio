@@ -1,0 +1,414 @@
+{
+  "schemaVersion": 1,
+  "id": "kr8_cb279bf7447ee887",
+  "name": "Signal Bloom Vertical - Kr8 Demo",
+  "createdAt": "2026-07-29T00:47:42.640Z",
+  "updatedAt": "2026-07-29T00:47:42.677Z",
+  "source": {
+    "provider": "local-files",
+    "sourceId": "public-demo:vertical-1080p",
+    "sourceRoot": "assets/audio"
+  },
+  "composition": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "duration": 30.000181,
+    "backgroundColor": "#05070A",
+    "pixelAspectRatio": 1,
+    "outputTarget": "9:16",
+    "formatId": "vertical-1080p"
+  },
+  "assets": [
+    {
+      "id": "kr8_1096ed706036a89e",
+      "type": "audio",
+      "role": "song",
+      "path": "assets/audio/Demo_Sample_Audio.flac",
+      "missing": false,
+      "metadata": {
+        "preferred": true,
+        "imported": true,
+        "importedAt": "2026-07-29T00:47:42.675Z",
+        "sourceProvider": "local-files",
+        "originalFilename": "Demo_Sample_Audio.flac",
+        "sourcePath": "assets/audio/Demo_Sample_Audio.flac",
+        "playbackPath": "assets/audio/Demo_Sample_Audio.flac",
+        "proxyGenerated": false,
+        "proxyReason": "",
+        "waveformCacheKey": "dec028bed89812ef66712a812296502e520bf2bb21c0f2476259b6f5019fd7de",
+        "sha256": "dec028bed89812ef66712a812296502e520bf2bb21c0f2476259b6f5019fd7de",
+        "bytes": 3260735,
+        "duration": 30.000181,
+        "format": "flac",
+        "codec": "flac",
+        "sampleRate": 44100,
+        "channels": 2,
+        "title": "",
+        "artist": "",
+        "album": "",
+        "embeddedCover": false
+      }
+    },
+    {
+      "id": "asset_22ebde57912247fb89d09926094e14af",
+      "type": "image",
+      "role": "cover",
+      "path": "assets/9_16_Demo_Cover.png",
+      "missing": false,
+      "metadata": {
+        "imported": true,
+        "importedAt": "2026-07-29T00:47:42.676Z",
+        "originalFilename": "9_16_Demo_Cover.png"
+      }
+    },
+    {
+      "id": "kr8_217df206e45984bc",
+      "type": "lyrics",
+      "role": "lyrics",
+      "path": "assets/lyrics.kr8.json",
+      "missing": false,
+      "metadata": {
+        "format": "kr8-aligned-json",
+        "edited": true,
+        "editedAt": "2026-07-29T00:47:42.677Z"
+      }
+    }
+  ],
+  "layers": [
+    {
+      "id": "kr8_6c180d31900f7008",
+      "type": "shape",
+      "name": "Background",
+      "visible": true,
+      "locked": false,
+      "order": 0,
+      "start": 0,
+      "end": 30.000181,
+      "transform": {
+        "x": 540,
+        "y": 960,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "width": 1080,
+        "height": 1920
+      },
+      "opacity": 1,
+      "blendMode": "normal",
+      "properties": {
+        "shape": "rect",
+        "fill": "#05070A"
+      },
+      "effects": [],
+      "audioBindings": [],
+      "animations": []
+    },
+    {
+      "id": "kr8_c5910da8aaac7443",
+      "type": "image",
+      "name": "Cover",
+      "visible": true,
+      "locked": false,
+      "order": 10,
+      "start": 0,
+      "end": 30.000181,
+      "transform": {
+        "x": 540,
+        "y": 960,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "width": 1080,
+        "height": 1920
+      },
+      "opacity": 1,
+      "blendMode": "normal",
+      "properties": {
+        "assetId": "asset_22ebde57912247fb89d09926094e14af",
+        "fit": "cover",
+        "radius": 8,
+        "shadow": {
+          "color": "#000000",
+          "blur": 50,
+          "opacity": 0.45
+        }
+      },
+      "effects": [],
+      "audioBindings": [
+        {
+          "id": "kr8_a3b57caba682866e",
+          "source": "bass",
+          "targetProperty": "transform.scaleX",
+          "amount": 0.08,
+          "min": 1,
+          "max": 1.08,
+          "smoothing": 0.35,
+          "attack": 0.08,
+          "release": 0.25,
+          "curve": "ease-out"
+        },
+        {
+          "id": "kr8_41947bdd9e506864",
+          "source": "bass",
+          "targetProperty": "transform.scaleY",
+          "amount": 0.08,
+          "min": 1,
+          "max": 1.08,
+          "smoothing": 0.35,
+          "attack": 0.08,
+          "release": 0.25,
+          "curve": "ease-out"
+        }
+      ],
+      "animations": []
+    },
+    {
+      "id": "kr8_355b14bbe92dfb2a",
+      "type": "visualizer",
+      "name": "Bass Spectrum",
+      "visible": true,
+      "locked": false,
+      "order": 20,
+      "start": 0,
+      "end": 30.000181,
+      "transform": {
+        "x": 540,
+        "y": 1600,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "width": 663.75,
+        "height": 213.33333333333331
+      },
+      "opacity": 0.72,
+      "blendMode": "screen",
+      "properties": {
+        "visualizerType": "bars",
+        "source": "frequencyBins",
+        "color": "#EDEDED",
+        "accentColor": "#B50F1D",
+        "bars": 64,
+        "minFrequency": 40,
+        "maxFrequency": 16000,
+        "gain": 1,
+        "sensitivity": 1.08,
+        "floor": 0.04,
+        "highFrequencyBoost": 0.75,
+        "placeholder": true
+      },
+      "effects": [],
+      "audioBindings": [],
+      "animations": []
+    },
+    {
+      "id": "kr8_a917105c33e421fb",
+      "type": "text",
+      "name": "Song Title",
+      "visible": true,
+      "locked": false,
+      "order": 30,
+      "start": 0,
+      "end": 30.000181,
+      "transform": {
+        "x": 540,
+        "y": 222.2222222222222,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "width": 843.75,
+        "height": 213.33333333333331
+      },
+      "opacity": 1,
+      "blendMode": "normal",
+      "properties": {
+        "text": "Signal Bloom Vertical",
+        "fontFamily": "Montserrat SemiBold",
+        "fontSize": 68,
+        "color": "#F5F0EA",
+        "align": "center",
+        "letterSpacing": 0,
+        "typography": {
+          "version": 1,
+          "fontFamily": "Montserrat SemiBold",
+          "fontSize": 68,
+          "fontWeight": 600,
+          "fontStyle": "normal",
+          "lineHeight": 1,
+          "letterSpacing": 0,
+          "wordSpacing": 0,
+          "align": "center",
+          "verticalAlign": "middle",
+          "textTransform": "none",
+          "color": "#F5F0EA",
+          "textOpacity": 1,
+          "autoWrap": false,
+          "boxMode": "fixed-box",
+          "scaleX": 1,
+          "scaleY": 1,
+          "skewX": 0,
+          "skewY": 0,
+          "rotation": 0,
+          "stretchX": 1,
+          "stretchY": 1,
+          "anchorX": 0.5,
+          "anchorY": 0.5,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "effects": [],
+      "audioBindings": [],
+      "animations": []
+    },
+    {
+      "id": "kr8_901b897be72f4855",
+      "type": "text",
+      "name": "Artist",
+      "visible": true,
+      "locked": false,
+      "order": 40,
+      "start": 0,
+      "end": 30.000181,
+      "transform": {
+        "x": 540,
+        "y": 311.1111111111111,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "width": 675,
+        "height": 142.22222222222223
+      },
+      "opacity": 0.78,
+      "blendMode": "normal",
+      "properties": {
+        "text": "Kr8 Studio Demo",
+        "fontFamily": "Montserrat Medium",
+        "fontSize": 34,
+        "color": "#FAFAFA",
+        "align": "center",
+        "letterSpacing": 0,
+        "typography": {
+          "version": 1,
+          "fontFamily": "Montserrat Medium",
+          "fontSize": 34,
+          "fontWeight": 500,
+          "fontStyle": "normal",
+          "lineHeight": 1,
+          "letterSpacing": 0,
+          "wordSpacing": 0,
+          "align": "center",
+          "verticalAlign": "middle",
+          "textTransform": "none",
+          "color": "#FAFAFA",
+          "textOpacity": 1,
+          "autoWrap": false,
+          "boxMode": "fixed-box",
+          "scaleX": 1,
+          "scaleY": 1,
+          "skewX": 0,
+          "skewY": 0,
+          "rotation": 0,
+          "stretchX": 1,
+          "stretchY": 1,
+          "anchorX": 0.5,
+          "anchorY": 0.5,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "effects": [],
+      "audioBindings": [],
+      "animations": []
+    },
+    {
+      "id": "layer_7791e9f610ea4a1c925641ecf2d3f42e",
+      "type": "lyrics",
+      "name": "Lyrics Overlay",
+      "visible": true,
+      "locked": false,
+      "order": 41,
+      "start": 0,
+      "end": 30.000181,
+      "transform": {
+        "x": 540,
+        "y": 1498,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "width": 842,
+        "height": 307
+      },
+      "opacity": 1,
+      "blendMode": "normal",
+      "properties": {
+        "styleId": "noir-card",
+        "source": "currentCue",
+        "fontFamily": "Montserrat SemiBold",
+        "fontSize": 54,
+        "color": "#F5F0EA",
+        "align": "center",
+        "lineHeight": 1.18,
+        "maxLines": 2,
+        "backgroundColor": "#05070A",
+        "backgroundOpacity": 0.55,
+        "padding": 28,
+        "radius": 10,
+        "strokeColor": "#000000",
+        "strokeWidth": 5,
+        "shadowColor": "#000000",
+        "shadowBlur": 18,
+        "transition": {
+          "type": "fade",
+          "enabled": true,
+          "fadeIn": 0.14,
+          "fadeOut": 0.18
+        }
+      },
+      "effects": [],
+      "audioBindings": [],
+      "animations": []
+    }
+  ],
+  "scenes": [
+    {
+      "id": "kr8_410c86c8760979ef",
+      "name": "Main",
+      "start": 0,
+      "end": 30.000181,
+      "overrides": []
+    }
+  ],
+  "presets": [
+    "tk-noir-pulse"
+  ],
+  "migrations": [],
+  "metadata": {
+    "title": "Signal Bloom Vertical",
+    "artist": "Kr8 Studio Demo",
+    "sourceProvider": "local-files",
+    "sourceProviderName": "Local Files",
+    "importedAt": "2026-07-29T00:47:42.640Z",
+    "warnings": [],
+    "outputTargets": [
+      "9:16"
+    ],
+    "compositionFormatId": "vertical-1080p",
+    "audioSourceProvider": "local-files",
+    "audioImportedAt": "2026-07-29T00:47:42.675Z",
+    "demo": true,
+    "assetTerms": "See ASSET-LICENSE.md in the repository root."
+  }
+}

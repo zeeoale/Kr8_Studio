@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kr8 Studio</title>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/lyrics-editor/lyrics-editor.css">
+  </head>
+  <body>
+    <div id="loadingSplash" class="loading-splash" aria-live="polite">
+      <div class="loading-splash-panel">
+        <img class="loading-splash-logo" src="/brand/Kr8_Studio.png" alt="Kr8 Studio">
+        <div class="loading-splash-copy">
+          <strong>Kr8 Studio</strong>
+          <span id="loadingSplashLine">Loading Kr8 Core</span>
+        </div>
+        <div class="loading-splash-track">
+          <div class="loading-splash-fill"></div>
+        </div>
+      </div>
+    </div>
+    <div class="app-shell">
+      <header class="toolbar">
+        <div class="brand">
+          <strong>Kr8 Studio</strong>
+          <span id="projectName">Loading...</span>
+        </div>
+        <div class="toolbar-actions">
+          <button id="addLyricsButton" type="button">Lyrics</button>
+          <button id="importTkMusicButton" type="button">TKMusic Library</button>
+          <button id="importAudioButton" type="button">Import Audio</button>
+          <button id="createCoverButton" type="button">Create Cover</button>
+          <button id="saveTemplateButton" type="button">Save Look</button>
+          <button id="applyTemplateButton" type="button">Apply Look</button>
+          <select id="compositionFormatSelect" class="toolbar-select" title="Composition format">
+            <option value="landscape-1080p">16:9 Landscape</option>
+            <option value="vertical-1080p">9:16 Vertical</option>
+            <option value="square-1080p">1:1 Square</option>
+            <option value="custom">Custom</option>
+          </select>
+          <button id="exportButton" type="button">Export</button>
+          <button id="reelModeButton" type="button" disabled title="Reel Mode requires a final MP4 export">Reel Mode</button>
+          <button id="openButton" type="button">Open</button>
+          <button id="saveButton" type="button">Save</button>
+          <button id="reloadButton" type="button">Reload</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="panel layers-panel">
+          <div class="panel-header">
+            <h2>Layers</h2>
+            <div class="layer-actions">
+              <button id="moveUpButton" type="button" title="Move layer up">Up</button>
+              <button id="moveDownButton" type="button" title="Move layer down">Down</button>
+            </div>
+          </div>
+          <div id="layersList" class="layers-list"></div>
+        </aside>
+
+        <section class="stage-column">
+          <div class="stage-frame">
+            <canvas id="stageCanvas" width="1920" height="1080"></canvas>
+          </div>
+          <div class="timeline">
+            <div class="timeline-meta">
+              <div class="transport">
+                <button id="playButton" class="play-button" type="button">Play</button>
+                <span id="timeLabel">0:00 / 0:00</span>
+                <button id="seekBackButton" class="transport-button" type="button" title="Back 5 seconds">-5s</button>
+                <button id="seekForwardButton" class="transport-button" type="button" title="Forward 5 seconds">+5s</button>
+                <input id="timeInput" class="time-input" type="text" value="0:00" aria-label="Jump to time">
+                <button id="muteButton" class="transport-button" type="button" title="Mute or unmute">Mute</button>
+                <input id="volumeSlider" class="volume-slider" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume">
+              </div>
+              <span id="durationLabel">Duration: 0s</span>
+              <span id="fpsLabel">0 fps</span>
+            </div>
+            <div class="waveform-wrap">
+              <canvas id="waveformCanvas" width="1200" height="44"></canvas>
+              <div id="timelineTrack" class="timeline-track">
+                <div id="timelineFill" class="timeline-fill"></div>
+              </div>
+            </div>
+            <input id="timelineScrubber" class="timeline-scrubber" type="range" min="0" max="0" step="0.01" value="0">
+            <div id="sceneStrip" class="scene-strip"></div>
+            <div class="lyrics-preview">
+              <span id="lyricsMeta">Lyrics</span>
+              <strong id="lyricsLine">No timed lyrics loaded</strong>
+            </div>
+            <div class="audio-meter">
+              <span>Bass</span>
+              <div class="meter-track"><div id="bassMeter" class="meter-fill"></div></div>
+              <span id="audioStatus">No audio</span>
+            </div>
+          </div>
+        </section>
+
+        <aside class="panel inspector-panel">
+          <div class="panel-header">
+            <h2>Inspector</h2>
+            <div class="layer-actions">
+              <button id="duplicateButton" type="button">Duplicate</button>
+              <button id="deleteButton" type="button">Delete</button>
+            </div>
+          </div>
+          <div class="lyrics-navigator">
+            <div class="lyrics-nav-header">
+              <strong>Lyrics</strong>
+              <span id="lyricsCount">0 lines</span>
+            </div>
+            <input id="lyricsSearch" type="search" placeholder="Search lyrics">
+            <div id="lyricsList" class="lyrics-list"></div>
+          </div>
+          <form id="inspectorForm" class="inspector-form"></form>
+        </aside>
+      </main>
+
+      <footer class="statusbar">
+        <span id="statusText">Ready</span>
+        <span id="projectPath"></span>
+      </footer>
+    </div>
+    <input
+      id="audioFileInput"
+      type="file"
+      accept=".mp3,.wav,.flac,.m4a,.aac,.ogg,audio/mpeg,audio/wav,audio/flac,audio/mp4,audio/aac,audio/ogg"
+      hidden
+    >
+    <div id="audioImportPanel" class="modal-backdrop" hidden>
+      <section class="audio-import-panel" role="dialog" aria-modal="true" aria-labelledby="audioImportTitle">
+        <div class="export-panel-header">
+          <div>
+            <h2 id="audioImportTitle">Import Audio</h2>
+            <span id="audioImportMode">Create a project from a local audio file</span>
+          </div>
+          <button id="audioImportCloseButton" class="icon-button" type="button" title="Close audio import">x</button>
+        </div>
+        <div class="audio-import-body">
+          <div class="audio-import-file">
+            <div>
+              <span>Selected file</span>
+              <strong id="audioImportFilename">No file selected</strong>
+            </div>
+            <button id="audioImportChooseButton" type="button">Choose File</button>
+          </div>
+          <div id="audioImportCurrent" class="audio-import-current" hidden></div>
+          <div class="audio-import-grid">
+            <label>
+              <span>Song title</span>
+              <input id="audioImportTitleInput" type="text" autocomplete="off">
+            </label>
+            <label>
+              <span>Artist</span>
+              <input id="audioImportArtistInput" type="text" autocomplete="off">
+            </label>
+            <label id="audioImportFormatField">
+              <span>Composition</span>
+              <select id="audioImportFormatSelect">
+                <option value="landscape-1080p">16:9 Landscape</option>
+                <option value="vertical-1080p">9:16 Vertical</option>
+                <option value="square-1080p">1:1 Square</option>
+              </select>
+            </label>
+          </div>
+          <label class="audio-import-metadata">
+            <input id="audioImportMetadataCheckbox" type="checkbox">
+            <span>Update project title, artist and matching text layers</span>
+          </label>
+          <div id="audioImportNotice" class="audio-import-notice"></div>
+          <div id="audioImportResult" class="audio-import-result" hidden></div>
+        </div>
+        <div class="audio-import-footer">
+          <button id="audioImportCancelButton" type="button">Cancel</button>
+          <button id="audioImportRunButton" class="primary-action" type="button">Import Audio</button>
+        </div>
+      </section>
+    </div>
+    <div id="tkMusicLibraryPanel" class="modal-backdrop" hidden>
+      <section class="tkmusic-library-panel" role="dialog" aria-modal="true" aria-labelledby="tkMusicLibraryTitle">
+        <div class="export-panel-header">
+          <div class="tkmusic-library-heading">
+            <h2 id="tkMusicLibraryTitle">TKMusic Library</h2>
+            <span id="tkMusicLibraryCount">Loading tracks...</span>
+          </div>
+          <button id="tkMusicLibraryCloseButton" class="icon-button" type="button" title="Close TKMusic library">x</button>
+        </div>
+        <div class="tkmusic-library-controls">
+          <label class="tkmusic-library-search">
+            <span>Search</span>
+            <input id="tkMusicLibrarySearch" type="search" placeholder="Title, artist, ID, mood or tags" autocomplete="off">
+          </label>
+          <label>
+            <span>Sort</span>
+            <select id="tkMusicLibrarySort">
+              <option value="newest">Newest first</option>
+              <option value="title">Title</option>
+              <option value="artist">Artist</option>
+              <option value="pinned">Pinned first</option>
+            </select>
+          </label>
+          <label class="tkmusic-library-ready">
+            <input id="tkMusicLibraryReadyOnly" type="checkbox">
+            <span>Audio ready</span>
+          </label>
+          <button id="tkMusicLibraryRefreshButton" type="button">Refresh</button>
+        </div>
+        <div id="tkMusicLibraryStatus" class="tkmusic-library-status" aria-live="polite"></div>
+        <div id="tkMusicLibraryGrid" class="tkmusic-library-grid"></div>
+        <div class="tkmusic-library-footer">
+          <label>
+            <span>Manual track ID</span>
+            <input id="tkMusicManualIdInput" type="text" placeholder="Suno or TKMusic ID" autocomplete="off">
+          </label>
+          <button id="tkMusicManualImportButton" type="button">Import ID</button>
+          <button id="tkMusicLibraryCancelButton" type="button">Cancel</button>
+        </div>
+      </section>
+    </div>
+    <div id="coverLabPanel" class="modal-backdrop" hidden>
+      <section class="cover-lab-panel" role="dialog" aria-modal="true" aria-labelledby="coverLabTitle">
+        <div class="export-panel-header cover-lab-header">
+          <div>
+            <h2 id="coverLabTitle">Cover Lab</h2>
+            <span>Ollama prompt direction and ComfyUI generation</span>
+          </div>
+          <button id="coverLabCloseButton" class="icon-button" type="button" title="Close Cover Lab">x</button>
+        </div>
+        <div class="cover-lab-body">
+          <section class="cover-lab-section">
+            <div class="cover-lab-section-heading">
+              <span>01</span>
+              <h3>Song Context</h3>
+            </div>
+            <div class="cover-lab-grid two-columns">
+              <label>
+                <span>Song Title</span>
+                <input id="coverLabSongTitle" type="text">
+              </label>
+              <label>
+                <span>Artist</span>
+                <input id="coverLabArtist" type="text">
+              </label>
+            </div>
+            <label>
+              <span>Lyrics</span>
+              <textarea id="coverLabLyrics" rows="6"></textarea>
+            </label>
+            <div class="cover-lab-grid three-columns">
+              <label>
+                <span>Suno Prompt / Style Prompt</span>
+                <textarea id="coverLabSunoPrompt" rows="4"></textarea>
+              </label>
+              <label>
+                <span>Mood</span>
+                <textarea id="coverLabMood" rows="4"></textarea>
+              </label>
+              <label>
+                <span>Visual Direction</span>
+                <textarea id="coverLabVisualDirection" rows="4"></textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="cover-lab-section">
+            <div class="cover-lab-section-heading">
+              <span>02</span>
+              <h3>Character Identity</h3>
+            </div>
+            <div class="cover-lab-grid identity-grid">
+              <label>
+                <span>Character Identity</span>
+                <select id="coverLabIdentityPreset">
+                  <option value="takara">Takara</option>
+                  <option value="none">None</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </label>
+              <label class="cover-lab-check-field">
+                <input id="coverLabPreserveIdentity" type="checkbox" checked>
+                <span>Preserve identity</span>
+              </label>
+              <label class="cover-lab-check-field">
+                <input id="coverLabUseIdentityLora" type="checkbox" checked>
+                <span>Use Takara LoRA</span>
+              </label>
+              <label>
+                <span>Takara LoRA strength</span>
+                <input id="coverLabIdentityLoraStrength" type="number" min="-4" max="4" step="0.05" value="1.2">
+              </label>
+            </div>
+            <div id="coverLabIdentitySummary" class="cover-lab-identity-summary"></div>
+            <label>
+              <span>Character DNA</span>
+              <textarea id="coverLabIdentityDna" rows="5" readonly></textarea>
+            </label>
+            <label>
+              <span>Identity notes</span>
+              <textarea id="coverLabIdentityNotes" rows="3" placeholder="Optional song-specific identity guidance"></textarea>
+            </label>
+            <div class="cover-lab-actions">
+              <button id="coverLabInsertIdentityButton" type="button">Insert Identity Into Prompt</button>
+            </div>
+          </section>
+
+          <section class="cover-lab-section">
+            <div class="cover-lab-section-heading">
+              <span>03</span>
+              <h3>Prompt Builder</h3>
+            </div>
+            <div class="cover-lab-grid endpoint-grid">
+              <label>
+                <span>Ollama endpoint</span>
+                <input id="coverLabOllamaEndpoint" type="url" value="http://127.0.0.1:11434">
+              </label>
+              <label>
+                <span>Ollama model</span>
+                <select id="coverLabOllamaModel">
+                  <option value="">Loading installed models...</option>
+                </select>
+              </label>
+              <button id="coverLabRefreshModelsButton" type="button">Refresh Models</button>
+            </div>
+            <div id="coverLabModelStatus" class="cover-lab-inline-status" aria-live="polite"></div>
+            <label>
+              <span>Positive Prompt</span>
+              <textarea id="coverLabPositivePrompt" rows="7"></textarea>
+            </label>
+            <label>
+              <span>Negative Prompt</span>
+              <textarea id="coverLabNegativePrompt" rows="4"></textarea>
+            </label>
+            <div class="cover-lab-actions">
+              <button id="coverLabCreatePromptButton" class="primary-action" type="button">Create Prompt</button>
+            </div>
+          </section>
+
+          <section class="cover-lab-section">
+            <div class="cover-lab-section-heading">
+              <span>04</span>
+              <h3>Generation Settings</h3>
+            </div>
+            <div class="cover-lab-grid generation-grid">
+              <label>
+                <span>Ratio</span>
+                <select id="coverLabRatio"></select>
+              </label>
+              <label>
+                <span>Width</span>
+                <input id="coverLabWidth" type="number" min="64" max="4096" step="8">
+              </label>
+              <label>
+                <span>Height</span>
+                <input id="coverLabHeight" type="number" min="64" max="4096" step="8">
+              </label>
+              <label>
+                <span>Seed</span>
+                <input id="coverLabSeed" type="number" min="0" step="1">
+              </label>
+              <label>
+                <span>Batch Size</span>
+                <input id="coverLabBatchSize" type="number" min="1" max="8" step="1">
+              </label>
+              <label>
+                <span>ComfyUI endpoint</span>
+                <input id="coverLabComfyEndpoint" type="url" value="http://127.0.0.1:8188">
+              </label>
+            </div>
+            <div class="cover-lab-toggles">
+              <label><input id="coverLabRandomizeSeed" type="checkbox" checked> Randomize Seed</label>
+              <label><input id="coverLabGenerateUpscaled" type="checkbox" checked> Generate Upscaled Result</label>
+            </div>
+          </section>
+
+          <section class="cover-lab-section">
+            <div class="cover-lab-section-heading">
+              <span>05</span>
+              <h3>LoRA Settings</h3>
+            </div>
+            <div id="coverLabLoras" class="cover-lab-loras"></div>
+          </section>
+
+          <section class="cover-lab-section">
+            <div class="cover-lab-section-heading">
+              <span>06</span>
+              <h3>Results</h3>
+            </div>
+            <div id="coverLabStatus" class="cover-lab-status" aria-live="polite">Ready</div>
+            <div id="coverLabGallery" class="cover-lab-gallery">
+              <div class="empty-state">Generate a cover to review native and upscaled results.</div>
+            </div>
+          </section>
+        </div>
+        <div class="cover-lab-footer">
+          <button id="coverLabGenerateButton" class="primary-action" type="button">Generate Cover</button>
+          <button id="coverLabCancelButton" type="button">Close</button>
+        </div>
+      </section>
+    </div>
+    <div id="exportPanel" class="modal-backdrop" hidden>
+      <section class="export-panel" role="dialog" aria-modal="true" aria-labelledby="exportPanelTitle">
+        <div class="export-panel-header">
+          <h2 id="exportPanelTitle">Export</h2>
+          <button id="exportCloseButton" class="icon-button" type="button" title="Close export panel">x</button>
+        </div>
+        <div class="export-grid">
+          <label>
+            <span>Preset</span>
+            <select id="exportPresetSelect">
+              <option value="direct-mp4-raw-30s" selected>Direct MP4 Raw 30s</option>
+              <option value="direct-mp4-raw-nvenc-30s">Direct MP4 Raw NVENC 30s</option>
+              <option value="direct-mp4-composite-30s">Direct MP4 Composite 30s</option>
+              <option value="direct-mp4-composite-nvenc-30s">Direct MP4 Composite NVENC 30s</option>
+              <option value="direct-mp4-full">Direct MP4 Raw Full Range</option>
+              <option value="direct-mp4-raw-nvenc-full">Direct MP4 Raw NVENC Full Range</option>
+              <option value="direct-mp4-composite-full">Direct MP4 Composite Full Range</option>
+              <option value="direct-mp4-composite-nvenc-full">Direct MP4 Composite NVENC Full Range</option>
+              <option value="current-frame">Current Frame</option>
+              <option value="png-debug-2s">PNG Debug 2s</option>
+              <option value="direct-mp4-fast-30s">Direct MP4 PNG Fast 30s</option>
+              <option value="direct-mp4-30s">Direct MP4 PNG 30s</option>
+              <option value="preview-2s">Preview 2s (legacy)</option>
+              <option value="preview-5s">Preview 5s (legacy)</option>
+              <option value="current-scene">Current Scene</option>
+              <option value="current-scene-draft">Current Scene Draft</option>
+              <option value="custom-range">Custom Range</option>
+            </select>
+          </label>
+          <label>
+            <span>Start</span>
+            <input id="exportStartInput" type="number" min="0" step="0.01" value="0">
+          </label>
+          <label>
+            <span>End</span>
+            <input id="exportEndInput" type="number" min="0" step="0.01" value="2">
+          </label>
+          <label>
+            <span>FPS</span>
+            <input id="exportFpsInput" type="number" min="1" max="30" step="1" value="6">
+          </label>
+        </div>
+        <div class="export-fps-buttons" aria-label="Quick FPS values">
+          <button type="button" data-fps="6">6 fps</button>
+          <button type="button" data-fps="12">12 fps</button>
+          <button type="button" data-fps="24">24 fps</button>
+          <button type="button" data-fps="30">30 fps</button>
+        </div>
+        <div id="exportSummary" class="export-summary">Ready</div>
+        <div id="exportReview" class="export-review" hidden>
+          <div class="export-review-header">
+            <strong>Last Export</strong>
+            <span id="exportReviewMeta">No export yet</span>
+          </div>
+          <div class="export-review-path" id="exportReviewPath"></div>
+          <div id="exportBenchmark" class="export-benchmark" hidden></div>
+          <div class="export-review-previews">
+            <img id="exportReviewFirst" alt="First exported frame preview">
+            <img id="exportReviewLast" alt="Last exported frame preview">
+          </div>
+          <div class="export-review-actions">
+            <button id="exportRenderMp4Button" type="button">Render MP4 Draft</button>
+            <button id="exportCopyPathButton" type="button">Copy Path</button>
+            <button id="exportOpenFolderButton" type="button">Open Folder</button>
+          </div>
+        </div>
+        <div class="export-history">
+          <div class="export-history-header">
+            <strong>Export History</strong>
+            <button id="exportHistoryRefreshButton" type="button">Refresh</button>
+          </div>
+          <div id="exportHistoryList" class="export-history-list">
+            <div class="empty-state">No render history yet</div>
+          </div>
+        </div>
+        <div class="export-actions">
+          <button id="exportHeadlessMp4Button" type="button">Headless MP4</button>
+          <button id="exportDirectMp4Button" type="button">Direct MP4</button>
+          <button id="exportRunButton" class="primary-action" type="button">PNG Debug</button>
+          <button id="exportCancelButton" type="button">Cancel</button>
+        </div>
+      </section>
+    </div>
+    <div id="lyricsEditorPanel" class="lyrics-editor-shell" hidden>
+      <header class="lyrics-editor-header">
+        <div>
+          <span class="lyrics-editor-kicker">Kr8 Workspace</span>
+          <h2>Lyrics Editor</h2>
+        </div>
+        <div class="lyrics-editor-header-status">
+          <span id="lyricsEditorModified">No changes</span>
+          <span id="lyricsEditorCounter">0 cues</span>
+          <button id="lyricsEditorUndo" type="button" title="Undo (Ctrl+Z)">Undo</button>
+          <button id="lyricsEditorRedo" type="button" title="Redo (Ctrl+Y)">Redo</button>
+          <button id="lyricsEditorClose" class="icon-button" type="button" title="Close Lyrics Editor">x</button>
+        </div>
+      </header>
+
+      <section class="lyrics-editor-transport">
+        <div class="lyrics-editor-playback">
+          <button id="lyricsEditorPlay" class="primary-action" type="button">Play</button>
+          <button id="lyricsEditorBack" type="button">-5s</button>
+          <button id="lyricsEditorForward" type="button">+5s</button>
+          <span id="lyricsEditorTime">0:00.000 / 0:00.000</span>
+        </div>
+        <div class="lyrics-editor-waveform">
+          <canvas id="lyricsEditorWaveform" width="1400" height="64"></canvas>
+          <input id="lyricsEditorScrubber" type="range" min="0" max="0" step="0.001" value="0" aria-label="Lyrics playhead">
+        </div>
+      </section>
+
+      <section class="lyrics-editor-toolbar">
+        <input id="lyricsEditorSearch" type="search" placeholder="Search cue text">
+        <button id="lyricsEditorSelectAll" type="button">Select All</button>
+        <button id="lyricsEditorClearSelection" type="button">Clear</button>
+        <span class="lyrics-editor-divider"></span>
+        <button id="lyricsEditorAdd" type="button">Add</button>
+        <button id="lyricsEditorDuplicate" type="button">Duplicate</button>
+        <button id="lyricsEditorDelete" type="button">Delete</button>
+        <button id="lyricsEditorMoveUp" type="button">Up</button>
+        <button id="lyricsEditorMoveDown" type="button">Down</button>
+        <button id="lyricsEditorSplit" type="button">Split</button>
+        <button id="lyricsEditorMerge" type="button">Merge Next</button>
+      </section>
+
+      <main class="lyrics-editor-main">
+        <section class="lyrics-editor-list-pane">
+          <div class="lyrics-editor-list-head">
+            <span></span><span>#</span><span>Start</span><span>End</span><span>Text</span><span></span>
+          </div>
+          <div id="lyricsEditorCueList" class="lyrics-editor-cue-list"></div>
+        </section>
+
+        <aside class="lyrics-editor-inspector">
+          <div class="lyrics-editor-section-heading">
+            <strong>Cue Inspector</strong>
+            <span id="lyricsEditorSelectionCount">0 selected</span>
+          </div>
+          <label>
+            <span>Text</span>
+            <textarea id="lyricsEditorText" rows="7" placeholder="Select one cue"></textarea>
+          </label>
+          <div class="lyrics-editor-time-grid">
+            <label>
+              <span>Start</span>
+              <input id="lyricsEditorStart" type="text" placeholder="mm:ss.mmm">
+            </label>
+            <button id="lyricsEditorSetStart" type="button">Set from Playhead</button>
+            <label>
+              <span>End</span>
+              <input id="lyricsEditorEnd" type="text" placeholder="optional">
+            </label>
+            <button id="lyricsEditorSetEnd" type="button">Set from Playhead</button>
+          </div>
+          <div class="lyrics-editor-readonly">
+            <span>Type</span><strong id="lyricsEditorKind">-</strong>
+            <span>Stable ID</span><code id="lyricsEditorId">-</code>
+          </div>
+
+          <div class="lyrics-editor-section-heading">
+            <strong>Batch Shift</strong>
+          </div>
+          <div class="lyrics-editor-shift">
+            <input id="lyricsEditorShiftAmount" type="number" value="0.250" step="0.001" min="0.001">
+            <select id="lyricsEditorShiftScope">
+              <option value="selected">Selected</option>
+              <option value="following">Selected + Following</option>
+              <option value="all">All Cues</option>
+            </select>
+            <button id="lyricsEditorShiftEarlier" type="button">Earlier</button>
+            <button id="lyricsEditorShiftLater" type="button">Later</button>
+          </div>
+
+          <div class="lyrics-editor-section-heading">
+            <strong>Validation</strong>
+          </div>
+          <div id="lyricsEditorValidation" class="lyrics-editor-validation"></div>
+
+          <div class="lyrics-editor-section-heading">
+            <strong>Exchange</strong>
+          </div>
+          <div class="lyrics-editor-exchange">
+            <button id="lyricsEditorImportSrt" type="button">Import SRT</button>
+            <button id="lyricsEditorImportLrc" type="button">Import LRC</button>
+            <button id="lyricsEditorExportSrt" type="button">Export SRT</button>
+            <button id="lyricsEditorExportLrc" type="button">Export LRC</button>
+            <button id="lyricsEditorExportText" type="button">Export Text</button>
+          </div>
+          <input id="lyricsEditorImportFile" type="file" accept=".srt,.lrc,text/plain" hidden>
+        </aside>
+      </main>
+
+      <footer class="lyrics-editor-footer">
+        <span id="lyricsEditorMessage">Ready</span>
+        <div>
+          <button id="lyricsEditorApply" type="button">Apply Changes</button>
+          <button id="lyricsEditorSave" class="primary-action" type="button">Save Project</button>
+          <button id="lyricsEditorFooterClose" type="button">Close</button>
+        </div>
+      </footer>
+    </div>
+    <input id="coverFileInput" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" hidden>
+    <input id="coverVideoFileInput" type="file" accept=".mp4,.webm,.mov,video/mp4,video/webm,video/quicktime" hidden>
+    <input id="textTextureFileInput" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" hidden>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

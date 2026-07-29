@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "presets": [
+    {
+      "id": "custom-tk-techno-minimal",
+      "name": "TK - Techno/Minimal",
+      "custom": true,
+      "scope": "global",
+      "createdAt": "2026-07-12T11:24:59.625Z",
+      "properties": {
+        "visualizerType": "bars",
+        "bars": 128,
+        "minFrequency": 250,
+        "maxFrequency": 16000,
+        "gain": 1,
+        "sensitivity": 1,
+        "floor": 0.02,
+        "highFrequencyBoost": 0.75,
+        "lowFrequencyDamping": 0.1,
+        "midFrequencyDamping": 0.16,
+        "color": "#EDEDED",
+        "accentColor": "#B50F1D"
+      }
+    },
+    {
+      "id": "custom-tk-orchestral",
+      "name": "TK - Orchestral",
+      "custom": true,
+      "scope": "global",
+      "createdAt": "2026-07-12T11:40:02.952Z",
+      "properties": {
+        "visualizerType": "bars",
+        "bars": 128,
+        "minFrequency": 40,
+        "maxFrequency": 14000,
+        "gain": 1.25,
+        "sensitivity": 1,
+        "floor": 0.02,
+        "highFrequencyBoost": 0.75,
+        "lowFrequencyDamping": 0.1,
+        "midFrequencyDamping": 0.16,
+        "color": "#EDEDED",
+        "accentColor": "#B50F1D"
+      }
+    },
+    {
+      "id": "custom-tk-house",
+      "name": "TK - House",
+      "custom": true,
+      "scope": "global",
+      "createdAt": "2026-07-12T12:03:40.608Z",
+      "properties": {
+        "visualizerType": "bars",
+        "bars": 128,
+        "minFrequency": 20,
+        "maxFrequency": 15000,
+        "gain": 1.05,
+        "sensitivity": 1,
+        "floor": 0.02,
+        "highFrequencyBoost": 0.75,
+        "lowFrequencyDamping": 0.1,
+        "midFrequencyDamping": 0.16,
+        "color": "#EDEDED",
+        "accentColor": "#B50F1D"
+      },
+      "transform": {
+        "width": 1000,
+        "height": 1500,
+        "scaleX": 2,
+        "scaleY": 2
+      }
+    },
+    {
+      "id": "custom-tk-dubstep",
+      "name": "TK - Dubstep",
+      "custom": true,
+      "scope": "global",
+      "createdAt": "2026-07-12T12:29:40.340Z",
+      "properties": {
+        "visualizerType": "bars",
+        "bars": 128,
+        "minFrequency": 250,
+        "maxFrequency": 16000,
+        "gain": 1,
+        "sensitivity": 1,
+        "floor": 0.02,
+        "highFrequencyBoost": 0.75,
+        "lowFrequencyDamping": 0.1,
+        "midFrequencyDamping": 0.16,
+        "noiseGate": 0.025,
+        "color": "#f9c50b",
+        "accentColor": "#b5c7c4",
+        "innerRadius": 92,
+        "outerRadius": 260,
+        "barThickness": 4,
+        "startAngle": -90,
+        "arc": 360,
+        "rotationSpeed": 0,
+        "mirror": true,
+        "shadowLength": 0.35,
+        "shadowColor": "#3D1117",
+        "sceneVisualizerEnabled": false
+      },
+      "transform": {
+        "width": 1000,
+        "height": 1500,
+        "scaleX": 2,
+        "scaleY": 2
+      }
+    },
+    {
+      "id": "custom-tk-gold",
+      "name": "TK - Gold",
+      "custom": true,
+      "scope": "global",
+      "createdAt": "2026-07-17T19:51:59.406Z",
+      "properties": {
+        "visualizerType": "bars",
+        "bars": 128,
+        "minFrequency": 250,
+        "maxFrequency": 16000,
+        "gain": 1.5,
+        "sensitivity": 1,
+        "floor": 0.02,
+        "highFrequencyBoost": 0.75,
+        "lowFrequencyDamping": 0.1,
+        "midFrequencyDamping": 0.16,
+        "noiseGate": 0.025,
+        "color": "#d4af37",
+        "accentColor": "#b8860b",
+        "innerRadius": 92,
+        "outerRadius": 260,
+        "barThickness": 4,
+        "startAngle": -90,
+        "arc": 360,
+        "rotationSpeed": 0,
+        "mirror": true,
+        "shadowLength": 0.35,
+        "shadowColor": "#3D1117",
+        "sceneVisualizerEnabled": false
+      },
+      "transform": {
+        "width": 1000,
+        "height": 1500,
+        "scaleX": 2,
+        "scaleY": 2
+      }
+    },
+    {
+      "id": "custom-tk-white",
+      "name": "TK - White",
+      "custom": true,
+      "scope": "global",
+      "createdAt": "2026-07-23T10:14:08.736Z",
+      "properties": {
+        "visualizerType": "bars",
+        "bars": 256,
+        "minFrequency": 250,
+        "maxFrequency": 16000,
+        "gain": 1.5,
+        "sensitivity": 1,
+        "floor": 0.02,
+        "highFrequencyBoost": 0.75,
+        "lowFrequencyDamping": 0.1,
+        "midFrequencyDamping": 0.16,
+        "noiseGate": 0.025,
+        "color": "#ffffff",
+        "accentColor": "#1f1f1e",
+        "innerRadius": 92,
+        "outerRadius": 260,
+        "barThickness": 4,
+        "startAngle": -90,
+        "arc": 360,
+        "rotationSpeed": 0,
+        "mirror": true,
+        "shadowLength": 0.35,
+        "shadowColor": "#3D1117",
+        "sceneVisualizerEnabled": false
+      },
+      "transform": {
+        "width": 1000,
+        "height": 1500,
+        "scaleX": 2,
+        "scaleY": 2
+      }
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kr8 Reel Mode</title>
+    <link rel="stylesheet" href="/reel/reel.css">
+  </head>
+  <body>
+    <div class="reel-shell">
+      <header class="reel-toolbar">
+        <div class="reel-brand">
+          <strong>Kr8 Reel Mode</strong>
+          <span id="projectName">Loading project...</span>
+        </div>
+        <div class="toolbar-actions">
+          <button id="publishButton" type="button" disabled>Publish</button>
+          <button id="closeButton" type="button">Close</button>
+        </div>
+      </header>
+
+      <main class="reel-workspace">
+        <section class="preview-column">
+          <div class="source-summary">
+            <span>Final source</span>
+            <strong id="sourceName">No export</strong>
+            <code id="sourcePath"></code>
+          </div>
+
+          <div id="videoStage" class="video-stage">
+            <video id="videoPreview" preload="metadata"></video>
+            <div id="watermarkPreview" class="watermark-preview" hidden></div>
+          </div>
+
+          <div class="transport">
+            <button id="playButton" class="primary" type="button">Play</button>
+            <span id="timeLabel">0:00 / 0:00</span>
+            <input id="seekSlider" type="range" min="0" max="0" step="0.01" value="0" aria-label="Video position">
+          </div>
+
+          <section class="trim-panel">
+            <div class="section-title">
+              <h2>Trim</h2>
+              <button id="resetTrimButton" type="button">Full Duration</button>
+            </div>
+            <div class="trim-fields two-column">
+              <label><span>Start</span><input id="trimStartInput" type="number" min="0" step="0.01"></label>
+              <label><span>End</span><input id="trimEndInput" type="number" min="0" step="0.01"></label>
+            </div>
+            <label class="range-field"><span>In point</span><input id="trimStartSlider" type="range" min="0" max="0" step="0.01"></label>
+            <label class="range-field"><span>Out point</span><input id="trimEndSlider" type="range" min="0" max="0" step="0.01"></label>
+            <div id="trimSummary" class="trim-summary">No valid source loaded.</div>
+          </section>
+        </section>
+
+        <aside class="reel-inspector">
+          <section>
+            <h2>Video Fade</h2>
+            <div class="two-column">
+              <label><span>Fade In</span><input id="videoFadeInInput" type="number" min="0" max="5" step="0.1"></label>
+              <label><span>Fade Out</span><input id="videoFadeOutInput" type="number" min="0" max="5" step="0.1"></label>
+            </div>
+          </section>
+
+          <section>
+            <h2>Audio Finish</h2>
+            <div class="two-column">
+              <label><span>Fade In</span><input id="audioFadeInInput" type="number" min="0" max="5" step="0.1"></label>
+              <label><span>Fade Out</span><input id="audioFadeOutInput" type="number" min="0" max="5" step="0.1"></label>
+            </div>
+            <label class="range-field"><span>Final Volume <output id="volumeOutput">100%</output></span><input id="volumeInput" type="range" min="0" max="2" step="0.01" value="1"></label>
+          </section>
+
+          <section>
+            <div class="section-title">
+              <h2>Watermark</h2>
+              <label class="switch-label"><input id="watermarkEnabledInput" type="checkbox"> Enabled</label>
+            </div>
+            <div id="watermarkControls" class="control-stack">
+              <label><span>Type</span><select id="watermarkTypeInput"><option value="text">Text</option><option value="image">PNG Image</option></select></label>
+              <label id="watermarkTextField"><span>Text</span><input id="watermarkTextInput" type="text" maxlength="240"></label>
+              <label id="watermarkImageField" hidden><span>Transparent PNG</span><input id="watermarkImageInput" type="file" accept="image/png"><small id="watermarkImagePath">No PNG imported</small></label>
+              <div class="two-column">
+                <label><span>Position</span><select id="watermarkPositionInput"><option value="top-left">Top Left</option><option value="top-right">Top Right</option><option value="bottom-left">Bottom Left</option><option value="bottom-right">Bottom Right</option></select></label>
+                <label><span>Margin</span><input id="watermarkMarginInput" type="number" min="0" max="500" step="1"></label>
+              </div>
+              <div class="two-column">
+                <label><span>Size</span><input id="watermarkScaleInput" type="number" min="0.02" max="0.5" step="0.01"></label>
+                <label><span>Opacity</span><input id="watermarkOpacityInput" type="number" min="0" max="1" step="0.05"></label>
+              </div>
+              <label><span>Visibility</span><select id="watermarkVisibilityInput"><option value="entire">Entire Duration</option><option value="last-seconds">Last Seconds</option></select></label>
+              <label id="watermarkLastSecondsField" hidden><span>Last Seconds</span><input id="watermarkLastSecondsInput" type="number" min="0.1" step="0.1"></label>
+            </div>
+          </section>
+
+          <section class="export-section">
+            <h2>Reel Export</h2>
+            <div id="exportStatus" class="export-status">Ready for a non-destructive export.</div>
+            <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
+            <div id="exportResult" class="export-result" hidden>
+              <strong>Reel created</strong>
+              <code id="exportPath"></code>
+            </div>
+            <div class="button-row">
+              <button id="saveSettingsButton" type="button">Save Settings</button>
+              <button id="cancelExportButton" type="button" disabled>Cancel</button>
+              <button id="exportButton" class="primary" type="button">Export Reel</button>
+            </div>
+            <div class="button-row result-actions">
+              <button id="copyPathButton" type="button" disabled>Copy Path</button>
+              <button id="openFolderButton" type="button" disabled>Open Folder</button>
+            </div>
+          </section>
+        </aside>
+      </main>
+      <footer><span id="statusText">Loading Reel Mode...</span></footer>
+    </div>
+    <script type="module" src="/reel/reel.js"></script>
+  </body>
+</html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#111318">
+    <title>Kr8 Mobile</title>
+    <link rel="stylesheet" href="/mobile/mobile.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand-lockup">
+        <img src="/brand/Kr8_Studio.png" alt="">
+        <div><strong>Kr8 Studio</strong><span id="connectionState">Connecting</span></div>
+      </div>
+      <div class="header-actions">
+        <button id="libraryButton" class="button button-quiet" type="button">TKMusic</button>
+        <button id="reloadButton" class="button button-icon" type="button" title="Reload">R</button>
+      </div>
+    </header>
+
+    <nav class="workspace-tabs" aria-label="Mobile editor views">
+      <button class="workspace-tab active" type="button" data-view="canvas">Canvas</button>
+      <button class="workspace-tab" type="button" data-view="layers">Layers</button>
+      <button class="workspace-tab" type="button" data-view="inspector">Inspector</button>
+      <button class="workspace-tab" type="button" data-view="render">Render</button>
+      <button class="workspace-tab" type="button" data-view="publish">Publish</button>
+    </nav>
+
+    <main>
+      <section class="workspace-panel active" data-panel="canvas">
+        <div class="format-bar">
+          <div><span class="eyebrow">Composition</span><strong>9:16 Vertical</strong></div>
+          <button id="applyVerticalButton" class="button button-primary" type="button" hidden>Apply 9:16</button>
+          <span id="verticalBadge" class="status-badge">1080x1920</span>
+        </div>
+        <div class="stage-shell"><canvas id="stageCanvas" width="1080" height="1920" aria-label="Kr8 vertical canvas"></canvas></div>
+        <audio id="audio" preload="metadata"></audio>
+        <div class="transport-row">
+          <button id="playButton" class="button button-primary transport-main" type="button" disabled>Play</button>
+          <button id="backButton" class="button button-icon" type="button" title="Back 10 seconds" disabled>-10</button>
+          <button id="forwardButton" class="button button-icon" type="button" title="Forward 10 seconds" disabled>+10</button>
+          <button id="muteButton" class="button button-icon" type="button" title="Mute or unmute" disabled>Mute</button>
+        </div>
+        <div class="time-row">
+          <span id="currentTime">0:00</span>
+          <input id="seekSlider" type="range" min="0" max="0" step="0.01" value="0" aria-label="Seek" disabled>
+          <span id="duration">0:00</span>
+        </div>
+        <div class="volume-row"><span>Volume</span><input id="volumeSlider" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Volume"></div>
+        <div id="sceneStrip" class="scene-strip" aria-label="Song sections"></div>
+      </section>
+
+      <section class="workspace-panel" data-panel="layers">
+        <div class="section-heading"><div><span class="eyebrow">Project</span><h1 id="projectName">No project loaded</h1></div><span id="layerCount" class="status-badge">0</span></div>
+        <div id="layerList" class="layer-list"></div>
+        <div class="layer-actions">
+          <button class="button button-quiet" type="button" data-layer-action="up">Up</button>
+          <button class="button button-quiet" type="button" data-layer-action="down">Down</button>
+          <button class="button button-quiet" type="button" data-layer-action="duplicate">Duplicate</button>
+          <button class="button button-danger" type="button" data-layer-action="delete">Delete</button>
+        </div>
+      </section>
+
+      <section class="workspace-panel" data-panel="inspector">
+        <div class="section-heading"><div><span class="eyebrow">Selected layer</span><h1 id="inspectorTitle">Inspector</h1></div><span id="inspectorType" class="status-badge">-</span></div>
+        <form id="inspectorForm" class="inspector-form"></form>
+      </section>
+
+      <section class="workspace-panel" data-panel="render">
+        <div class="section-heading"><div><span class="eyebrow">Workstation</span><h1>Headless render</h1></div><span id="renderBadge" class="status-badge">Idle</span></div>
+        <div class="render-controls">
+          <label><span>Start</span><input id="renderStart" type="number" min="0" step="0.1" value="0"></label>
+          <label><span>Length</span><select id="renderLength"><option value="30">30 seconds</option><option value="60">60 seconds</option><option value="120">2 minutes</option><option value="full">Full song</option></select></label>
+          <label><span>FPS</span><select id="renderFps"><option value="30">30 fps</option><option value="24">24 fps</option><option value="12">12 fps</option><option value="6">6 fps</option></select></label>
+          <label class="toggle-row"><input id="nvencToggle" type="checkbox" checked><span>NVENC</span></label>
+        </div>
+        <div class="progress-track"><div id="renderProgress" class="progress-fill"></div></div>
+        <p id="renderMessage" class="status-copy">No render running.</p>
+        <div class="action-row"><button id="useCurrentButton" class="button button-quiet" type="button" disabled>Use current time</button><button id="cancelRenderButton" class="button button-danger" type="button" hidden>Cancel</button><button id="startRenderButton" class="button button-primary" type="button" disabled>Start render</button></div>
+      </section>
+
+      <section class="workspace-panel" data-panel="publish">
+        <div class="section-heading"><div><span class="eyebrow">Delivery</span><h1>Publisher</h1></div><button id="refreshPublishButton" class="button button-quiet" type="button">Refresh</button></div>
+        <div id="providerList" class="provider-list" aria-live="polite"></div>
+        <a class="button button-primary button-block" href="/publish/index.html">Open Publisher</a>
+      </section>
+    </main>
+
+    <footer><span id="statusText">Loading project</span><a href="/" aria-label="Open desktop editor">Desktop</a></footer>
+
+    <dialog id="libraryDialog" class="library-dialog">
+      <div class="dialog-header"><div><strong>TKMusic Library</strong><span id="libraryCount">Loading</span></div><button id="closeLibraryButton" class="button button-icon" type="button">X</button></div>
+      <div class="library-tools"><input id="librarySearch" type="search" placeholder="Title, artist, ID, mood or tags" aria-label="Search TKMusic"><select id="librarySort" aria-label="Sort TKMusic"><option value="newest">Newest</option><option value="pinned">Pinned</option><option value="title">Title</option></select><button id="refreshLibraryButton" class="button button-quiet" type="button">Refresh</button></div>
+      <div id="libraryList" class="library-list"></div>
+    </dialog>
+
+    <script type="module" src="/mobile/mobile.js"></script>
+  </body>
+</html>

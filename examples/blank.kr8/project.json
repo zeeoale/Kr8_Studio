@@ -1,0 +1,316 @@
+{
+  "schemaVersion": 1,
+  "id": "kr8_7aaee6e8aa4fa4a1",
+  "name": "Blank Kr8 Project",
+  "createdAt": "2026-07-29T00:47:42.589Z",
+  "updatedAt": "2026-07-29T00:47:42.589Z",
+  "source": {
+    "provider": "local-files",
+    "sourceId": "public-blank-project",
+    "sourceRoot": "assets/audio"
+  },
+  "composition": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "duration": 180,
+    "backgroundColor": "#05070A",
+    "pixelAspectRatio": 1,
+    "outputTarget": "16:9",
+    "formatId": "landscape-1080p"
+  },
+  "assets": [
+    {
+      "id": "kr8_a189f45c02954ca1",
+      "type": "image",
+      "role": "cover",
+      "path": "missing/cover",
+      "missing": true
+    }
+  ],
+  "layers": [
+    {
+      "id": "kr8_b0758944bc741aae",
+      "type": "shape",
+      "name": "Background",
+      "visible": true,
+      "locked": false,
+      "order": 0,
+      "start": 0,
+      "end": 180,
+      "transform": {
+        "x": 960,
+        "y": 540,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "width": 1920,
+        "height": 1080
+      },
+      "opacity": 1,
+      "blendMode": "normal",
+      "properties": {
+        "shape": "rect",
+        "fill": "#05070A"
+      },
+      "effects": [],
+      "audioBindings": [],
+      "animations": []
+    },
+    {
+      "id": "kr8_8251103650947615",
+      "type": "image",
+      "name": "Cover",
+      "visible": true,
+      "locked": false,
+      "order": 10,
+      "start": 0,
+      "end": 180,
+      "transform": {
+        "x": 960,
+        "y": 500,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "width": 620,
+        "height": 620
+      },
+      "opacity": 1,
+      "blendMode": "normal",
+      "properties": {
+        "assetId": "kr8_a189f45c02954ca1",
+        "fit": "cover",
+        "radius": 8,
+        "shadow": {
+          "color": "#000000",
+          "blur": 50,
+          "opacity": 0.45
+        }
+      },
+      "effects": [],
+      "audioBindings": [
+        {
+          "id": "kr8_0ad9e45e94241069",
+          "source": "bass",
+          "targetProperty": "transform.scaleX",
+          "amount": 0.08,
+          "min": 1,
+          "max": 1.08,
+          "smoothing": 0.35,
+          "attack": 0.08,
+          "release": 0.25,
+          "curve": "ease-out"
+        },
+        {
+          "id": "kr8_e0a13ca0a4eacef5",
+          "source": "bass",
+          "targetProperty": "transform.scaleY",
+          "amount": 0.08,
+          "min": 1,
+          "max": 1.08,
+          "smoothing": 0.35,
+          "attack": 0.08,
+          "release": 0.25,
+          "curve": "ease-out"
+        }
+      ],
+      "animations": []
+    },
+    {
+      "id": "kr8_072b311642e84ba9",
+      "type": "visualizer",
+      "name": "Bass Spectrum",
+      "visible": true,
+      "locked": false,
+      "order": 20,
+      "start": 0,
+      "end": 180,
+      "transform": {
+        "x": 960,
+        "y": 900,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "width": 1180,
+        "height": 120
+      },
+      "opacity": 0.72,
+      "blendMode": "screen",
+      "properties": {
+        "visualizerType": "bars",
+        "source": "frequencyBins",
+        "color": "#EDEDED",
+        "accentColor": "#B50F1D",
+        "bars": 64,
+        "minFrequency": 40,
+        "maxFrequency": 16000,
+        "gain": 1,
+        "sensitivity": 1.08,
+        "floor": 0.04,
+        "highFrequencyBoost": 0.75,
+        "placeholder": true
+      },
+      "effects": [],
+      "audioBindings": [],
+      "animations": []
+    },
+    {
+      "id": "kr8_136c21ffbbd19284",
+      "type": "text",
+      "name": "Song Title",
+      "visible": true,
+      "locked": false,
+      "order": 30,
+      "start": 0,
+      "end": 180,
+      "transform": {
+        "x": 960,
+        "y": 125,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "width": 1500,
+        "height": 120
+      },
+      "opacity": 1,
+      "blendMode": "normal",
+      "properties": {
+        "text": "Blank Kr8 Project",
+        "fontFamily": "Montserrat SemiBold",
+        "fontSize": 68,
+        "color": "#F5F0EA",
+        "align": "center",
+        "letterSpacing": 0,
+        "typography": {
+          "version": 1,
+          "fontFamily": "Montserrat SemiBold",
+          "fontSize": 68,
+          "fontWeight": 600,
+          "fontStyle": "normal",
+          "lineHeight": 1,
+          "letterSpacing": 0,
+          "wordSpacing": 0,
+          "align": "center",
+          "verticalAlign": "middle",
+          "textTransform": "none",
+          "color": "#F5F0EA",
+          "textOpacity": 1,
+          "autoWrap": false,
+          "boxMode": "fixed-box",
+          "scaleX": 1,
+          "scaleY": 1,
+          "skewX": 0,
+          "skewY": 0,
+          "rotation": 0,
+          "stretchX": 1,
+          "stretchY": 1,
+          "anchorX": 0.5,
+          "anchorY": 0.5,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "effects": [],
+      "audioBindings": [],
+      "animations": []
+    },
+    {
+      "id": "kr8_9e00a586e3cb8b7f",
+      "type": "text",
+      "name": "Artist",
+      "visible": true,
+      "locked": false,
+      "order": 40,
+      "start": 0,
+      "end": 180,
+      "transform": {
+        "x": 960,
+        "y": 175,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "anchorX": 0.5,
+        "anchorY": 0.5,
+        "width": 1200,
+        "height": 80
+      },
+      "opacity": 0.78,
+      "blendMode": "normal",
+      "properties": {
+        "text": "Unknown Artist",
+        "fontFamily": "Montserrat Medium",
+        "fontSize": 34,
+        "color": "#FAFAFA",
+        "align": "center",
+        "letterSpacing": 0,
+        "typography": {
+          "version": 1,
+          "fontFamily": "Montserrat Medium",
+          "fontSize": 34,
+          "fontWeight": 500,
+          "fontStyle": "normal",
+          "lineHeight": 1,
+          "letterSpacing": 0,
+          "wordSpacing": 0,
+          "align": "center",
+          "verticalAlign": "middle",
+          "textTransform": "none",
+          "color": "#FAFAFA",
+          "textOpacity": 1,
+          "autoWrap": false,
+          "boxMode": "fixed-box",
+          "scaleX": 1,
+          "scaleY": 1,
+          "skewX": 0,
+          "skewY": 0,
+          "rotation": 0,
+          "stretchX": 1,
+          "stretchY": 1,
+          "anchorX": 0.5,
+          "anchorY": 0.5,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "effects": [],
+      "audioBindings": [],
+      "animations": []
+    }
+  ],
+  "scenes": [
+    {
+      "id": "kr8_c8cf506c78d9c4bb",
+      "name": "Main",
+      "start": 0,
+      "end": 180,
+      "overrides": []
+    }
+  ],
+  "presets": [
+    "tk-noir-pulse"
+  ],
+  "migrations": [],
+  "metadata": {
+    "title": "",
+    "artist": "",
+    "sourceProvider": "local-files",
+    "sourceProviderName": "Local Files",
+    "importedAt": "2026-07-29T00:47:42.589Z",
+    "warnings": [
+      "Import local audio, a cover, and optional lyrics to begin."
+    ],
+    "outputTargets": [
+      "16:9"
+    ],
+    "compositionFormatId": "landscape-1080p",
+    "blank": true
+  }
+}

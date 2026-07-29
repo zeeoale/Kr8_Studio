@@ -1,0 +1,102 @@
+# Dependencies and generated builds
+node_modules/
+dist/
+build/
+coverage/
+.nyc_output/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+!.env.server.example
+google.json
+*credentials*.json
+*token*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Runtime state
+logs/
+*.log
+*.pid
+*.pid.json
+cache/
+.cache/
+temp/
+tmp/
+cover_creation/
+publish-data/
+bridge/**/data/
+
+# Private projects, renders, and media
+examples/*
+!examples/blank.kr8/
+!examples/blank.kr8/**
+!examples/kr8-demo-landscape.kr8/
+!examples/kr8-demo-landscape.kr8/**
+!examples/kr8-demo-vertical.kr8/
+!examples/kr8-demo-vertical.kr8/**
+**/exports/
+**/frames/
+**/videos/
+**/reels/
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.aac
+*.ogg
+*.mp4
+*.mov
+*.mkv
+*.webm
+!demo/Demo_Sample_Audio.flac
+!examples/kr8-demo-landscape.kr8/assets/audio/*.flac
+!examples/kr8-demo-vertical.kr8/assets/audio/*.flac
+
+# AI models and external tool output
+models/
+checkpoints/
+loras/
+vae/
+ComfyUI/output/
+.ollama/
+workflow/*.json
+
+# Archives, databases, and backups
+*.zip
+*.7z
+*.rar
+*.tar
+*.gz
+*.db
+*.sqlite
+*.sqlite3
+*.bak
+*.backup
+
+# Temporary screenshots (official docs screenshots remain tracked)
+screenshots/
+*.tmp.png
+*.tmp.webp
+!docs/screenshots/
+!docs/screenshots/*.webp
+
+# Editors and operating systems
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+
+# Python helpers, if used locally
+__pycache__/
+*.py[cod]
+.venv/
+venv/

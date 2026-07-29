@@ -1,0 +1,45 @@
+{
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "text": "" }
+  },
+  "5": {
+    "class_type": "EmptySD3LatentImage",
+    "inputs": { "width": 1024, "height": 1024, "batch_size": 1 }
+  },
+  "8": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "text": "" }
+  },
+  "10": {
+    "class_type": "KSampler",
+    "inputs": { "seed": ["58", 0] }
+  },
+  "38": {
+    "class_type": "Image Saver Simple",
+    "inputs": { "filename": "native", "path": "Kr8_CoverLab", "counter": 0 }
+  },
+  "58": {
+    "class_type": "SeedNode",
+    "inputs": { "seed": 1 }
+  },
+  "66": {
+    "class_type": "ImageScale",
+    "inputs": {}
+  },
+  "67": {
+    "class_type": "Image Saver Simple",
+    "inputs": { "filename": "upscaled", "path": "Kr8_CoverLab", "counter": 0 }
+  },
+  "70": {
+    "class_type": "Power Lora Loader (rgthree)",
+    "inputs": {
+      "lora_1": { "on": false, "lora": "Style_One.safetensors", "strength": 1 },
+      "lora_2": { "on": true, "lora": "Takara_LoRa_800_Step.safetensors", "strength": 1.2 },
+      "lora_3": { "on": false, "lora": "Style_Three.safetensors", "strength": 1 },
+      "lora_4": { "on": false, "lora": "Style_Four.safetensors", "strength": 1 },
+      "lora_5": { "on": false, "lora": "Style_Five.safetensors", "strength": 1 },
+      "lora_6": { "on": false, "lora": "Style_Six.safetensors", "strength": 1 }
+    }
+  }
+}
