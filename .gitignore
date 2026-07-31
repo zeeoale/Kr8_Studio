@@ -39,10 +39,10 @@ examples/*
 !examples/kr8-demo-landscape.kr8/**
 !examples/kr8-demo-vertical.kr8/
 !examples/kr8-demo-vertical.kr8/**
-**/exports/
-**/frames/
-**/videos/
-**/reels/
+examples/**/exports/
+examples/**/frames/
+examples/**/videos/
+examples/**/reels/
 *.mp3
 *.wav
 *.flac

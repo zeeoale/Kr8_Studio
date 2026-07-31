@@ -43,3 +43,21 @@ Older projects used `shadowColor` and `shadowBlur` without offsets to create a
 glow. When explicit `glowColor`, `glowBlur` and `glowIntensity` fields are
 missing, the renderer preserves that legacy interpretation. Editing either glow
 or shadow writes the new explicit representation.
+
+## Render cache
+
+Lyrics glyphs, outline, glow, shadow and backdrop are rasterized into a bounded
+offscreen cache. The bitmap is reused while the cue and visual properties stay
+unchanged; fade opacity, layer opacity, transforms and blend mode remain dynamic
+on the composition canvas. The cache keeps only the current bitmap for up to
+four lyrics layers, so a long song does not accumulate one image per cue.
+
+The bitmap includes effect padding calculated from stroke, glow blur and shadow
+offsets to avoid clipping decorative overflow. Headless export also skips
+timeline and lyrics-list DOM rebuilding inside the frame loop and passes the
+original `ImageData` buffer to the raw upload batch without two redundant RGBA
+copies.
+
+On the 1920x1080 Noir-style benchmark used during implementation, an active
+lyrics segment improved from about 9.3 fps and 86 ms `getImageData` time to about
+27 fps and 13.5 ms after caching and raw-buffer reuse.

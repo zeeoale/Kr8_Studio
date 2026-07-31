@@ -38,6 +38,11 @@ import {
   upsertProjectLyricsStylePreset
 } from './lyrics-styles.js';
 import {
+  buildLyricsRenderCacheKey,
+  calculateLyricsEffectPadding,
+  createLyricsRenderCache
+} from './lyrics-render-cache.js';
+import {
   VISUALIZER_STYLE_PRESETS,
   applyVisualizerPresetObject,
   applyVisualizerStylePreset,
@@ -302,6 +307,7 @@ const elements = {
 
 const context = elements.canvas.getContext('2d');
 const waveformContext = elements.waveformCanvas.getContext('2d');
+const lyricsRenderCache = createLyricsRenderCache({ maxLayers: 4 });
 const loadingSplashMessages = [
   'Loading Kr8 Core',
   'Importing visual styles',
@@ -1834,10 +1840,10 @@ async function exportFrameSequence(options) {
       state.audio.frame = createExportAudioFrame(timestamp, previousExportAudioFrame);
       previousExportAudioFrame = state.audio.frame;
       state.renderProject = buildRenderProject();
-      updateTimeline(timestamp, duration);
+      if (!options.headlessJobId) updateTimeline(timestamp, duration);
       renderLyrics();
       renderScenes();
-      renderLyricsNavigator();
+      if (!options.headlessJobId) renderLyricsNavigator();
       await prepareVideoLayersForExport(timestamp);
       renderCanvas();
       const dataUrl = elements.canvas.toDataURL('image/png');
@@ -2004,7 +2010,7 @@ async function exportDirectMp4(options) {
         }
         const imageData = context.getImageData(0, 0, elements.canvas.width, elements.canvas.height);
         benchmark.getImageDataMs += performance.now() - captureStartedAt;
-        pendingFrames.push({ timestamp, rawBuffer: new Uint8Array(imageData.data) });
+        pendingFrames.push({ timestamp, rawBuffer: imageData.data });
       } else {
         const captureStartedAt = performance.now();
         const blob = await canvasToPngBlob(elements.canvas);
@@ -2393,7 +2399,7 @@ async function buildDirectMp4BinaryBatch(sessionId, frames, final, benchmark = n
   const headerFrames = [];
   for (const frame of frames) {
     const arrayBuffer = frame.rawBuffer
-      ? frame.rawBuffer.buffer.slice(frame.rawBuffer.byteOffset, frame.rawBuffer.byteOffset + frame.rawBuffer.byteLength)
+      ? exactArrayBuffer(frame.rawBuffer)
       : await frame.blob.arrayBuffer();
     buffers.push(arrayBuffer);
     headerFrames.push({
@@ -2410,6 +2416,11 @@ async function buildDirectMp4BinaryBatch(sessionId, frames, final, benchmark = n
   const prefix = new ArrayBuffer(4);
   new DataView(prefix).setUint32(0, headerBytes.byteLength, false);
   return new Blob([prefix, headerBytes, ...buffers], { type: 'application/octet-stream' });
+}
+
+function exactArrayBuffer(view) {
+  if (view.byteOffset === 0 && view.byteLength === view.buffer.byteLength) return view.buffer;
+  return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
 }
 
 function createDirectMp4Benchmark(options) {
@@ -4031,37 +4042,37 @@ function getLyricsShadowSettings(properties = {}) {
   };
 }
 
-function drawLyricsGlyphs(text, x, y, maxWidth) {
-  if (context.lineWidth > 0) context.strokeText(text, x, y, maxWidth);
-  context.fillText(text, x, y, maxWidth);
+function drawLyricsGlyphs(targetContext, text, x, y, maxWidth) {
+  if (targetContext.lineWidth > 0) targetContext.strokeText(text, x, y, maxWidth);
+  targetContext.fillText(text, x, y, maxWidth);
 }
 
-function drawLyricsGlow(text, x, y, maxWidth, glow) {
+function drawLyricsGlow(targetContext, text, x, y, maxWidth, glow) {
   if (glow.blur <= 0 || glow.intensity <= 0) return;
   const passes = Math.ceil(glow.intensity);
   for (let pass = 0; pass < passes; pass += 1) {
     const passOpacity = Math.min(1, glow.intensity - pass);
     if (passOpacity <= 0) continue;
-    context.save();
-    context.globalAlpha *= passOpacity;
-    context.shadowColor = glow.color;
-    context.shadowBlur = glow.blur;
-    context.shadowOffsetX = 0;
-    context.shadowOffsetY = 0;
-    drawLyricsGlyphs(text, x, y, maxWidth);
-    context.restore();
+    targetContext.save();
+    targetContext.globalAlpha *= passOpacity;
+    targetContext.shadowColor = glow.color;
+    targetContext.shadowBlur = glow.blur;
+    targetContext.shadowOffsetX = 0;
+    targetContext.shadowOffsetY = 0;
+    drawLyricsGlyphs(targetContext, text, x, y, maxWidth);
+    targetContext.restore();
   }
 }
 
-function drawLyricsShadow(text, x, y, maxWidth, shadow) {
+function drawLyricsShadow(targetContext, text, x, y, maxWidth, shadow) {
   if (shadow.blur <= 0 && shadow.offsetX === 0 && shadow.offsetY === 0) return;
-  context.save();
-  context.shadowColor = shadow.color;
-  context.shadowBlur = shadow.blur;
-  context.shadowOffsetX = shadow.offsetX;
-  context.shadowOffsetY = shadow.offsetY;
-  drawLyricsGlyphs(text, x, y, maxWidth);
-  context.restore();
+  targetContext.save();
+  targetContext.shadowColor = shadow.color;
+  targetContext.shadowBlur = shadow.blur;
+  targetContext.shadowOffsetX = shadow.offsetX;
+  targetContext.shadowOffsetY = shadow.offsetY;
+  drawLyricsGlyphs(targetContext, text, x, y, maxWidth);
+  targetContext.restore();
 }
 
 function drawLyricsLayer(layer) {
@@ -4075,7 +4086,43 @@ function drawLyricsLayer(layer) {
   const props = layer.properties || {};
   const text = getLyricsLayerText(layer);
   const transitionOpacity = calculateLyricsTransitionOpacity(state.lyrics.currentCue, getRenderTime(), props.transition);
+  const glow = getLyricsGlowSettings(props);
+  const shadow = getLyricsShadowSettings(props);
+  const cacheKey = buildLyricsRenderCacheKey({
+    text,
+    width,
+    height,
+    originX: -left,
+    properties: props,
+    glow,
+    shadow
+  });
+  const bitmap = lyricsRenderCache.getOrCreate(layer.id, cacheKey, () => createLyricsLayerBitmap({
+    text,
+    width,
+    height,
+    left,
+    props,
+    glow,
+    shadow
+  }));
+
   context.globalAlpha *= transitionOpacity;
+  context.drawImage(bitmap.canvas, left - bitmap.effectPadding, top - bitmap.effectPadding);
+}
+
+function createLyricsLayerBitmap({ text, width, height, left, props, glow, shadow }) {
+  const effectPadding = calculateLyricsEffectPadding({
+    strokeWidth: props.strokeWidth,
+    glow,
+    shadow
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.ceil(width + effectPadding * 2));
+  canvas.height = Math.max(1, Math.ceil(height + effectPadding * 2));
+  const bitmapContext = canvas.getContext('2d');
+  if (!bitmapContext) throw new Error('Lyrics bitmap context is unavailable.');
+
   const fontSize = Number(props.fontSize || 48);
   const padding = Number(props.padding ?? 24);
   const radius = Number(props.radius ?? 8);
@@ -4083,37 +4130,41 @@ function drawLyricsLayer(layer) {
   const lineHeight = fontSize * Number(props.lineHeight || 1.18);
   const maxLines = Math.max(1, Math.round(Number(props.maxLines || 2)));
   const innerWidth = Math.max(10, width - padding * 2);
-  const lines = wrapText(text, innerWidth, `${fontSize}px ${cssFont(props.fontFamily || 'Arial')}`, maxLines);
+  const font = `${fontSize}px ${cssFont(props.fontFamily || 'Arial')}`;
+  const lines = wrapText(text, innerWidth, font, maxLines, bitmapContext);
 
   if (backgroundOpacity > 0) {
-    context.save();
-    context.globalAlpha *= backgroundOpacity;
-    context.fillStyle = props.backgroundColor || '#000000';
-    drawRoundedRect(left, top, width, height, radius);
-    context.fill();
-    context.restore();
+    bitmapContext.save();
+    bitmapContext.globalAlpha = backgroundOpacity;
+    bitmapContext.fillStyle = props.backgroundColor || '#000000';
+    drawRoundedRect(bitmapContext, effectPadding, effectPadding, width, height, radius);
+    bitmapContext.fill();
+    bitmapContext.restore();
   }
 
-  context.font = `${fontSize}px ${cssFont(props.fontFamily || 'Arial')}`;
-  context.textAlign = props.align || 'center';
-  context.textBaseline = 'middle';
-  context.lineJoin = 'round';
-  context.fillStyle = props.color || '#ffffff';
-  context.strokeStyle = props.strokeColor || '#000000';
-  context.lineWidth = Number(props.strokeWidth || 0);
-  const glow = getLyricsGlowSettings(props);
-  const shadow = getLyricsShadowSettings(props);
+  bitmapContext.font = font;
+  bitmapContext.textAlign = props.align || 'center';
+  bitmapContext.textBaseline = 'middle';
+  bitmapContext.lineJoin = 'round';
+  bitmapContext.fillStyle = props.color || '#ffffff';
+  bitmapContext.strokeStyle = props.strokeColor || '#000000';
+  bitmapContext.lineWidth = Number(props.strokeWidth || 0);
 
   const textHeight = (lines.length - 1) * lineHeight;
-  const startY = top + height / 2 - textHeight / 2;
-  const x = props.align === 'left' ? left + padding : props.align === 'right' ? left + width - padding : 0;
+  const startY = effectPadding + height / 2 - textHeight / 2;
+  const x = props.align === 'left'
+    ? effectPadding + padding
+    : props.align === 'right'
+      ? effectPadding + width - padding
+      : effectPadding - left;
 
   for (let index = 0; index < lines.length; index += 1) {
     const y = startY + index * lineHeight;
-    drawLyricsGlow(lines[index], x, y, innerWidth, glow);
-    drawLyricsShadow(lines[index], x, y, innerWidth, shadow);
-    drawLyricsGlyphs(lines[index], x, y, innerWidth);
+    drawLyricsGlow(bitmapContext, lines[index], x, y, innerWidth, glow);
+    drawLyricsShadow(bitmapContext, lines[index], x, y, innerWidth, shadow);
+    drawLyricsGlyphs(bitmapContext, lines[index], x, y, innerWidth);
   }
+  return { canvas, effectPadding };
 }
 
 function drawVisualizerLayer(layer) {
@@ -5493,16 +5544,16 @@ function normalizeColor(value) {
   return /^#[0-9a-f]{6}$/i.test(text) ? text : '#ffffff';
 }
 
-function wrapText(text, maxWidth, font, maxLines) {
-  context.save();
-  context.font = font;
+function wrapText(text, maxWidth, font, maxLines, measureContext = context) {
+  measureContext.save();
+  measureContext.font = font;
   const words = String(text || '').split(/\s+/).filter(Boolean);
   const lines = [];
   let line = '';
 
   for (const word of words) {
     const next = line ? `${line} ${word}` : word;
-    if (context.measureText(next).width <= maxWidth || !line) {
+    if (measureContext.measureText(next).width <= maxWidth || !line) {
       line = next;
       continue;
     }
@@ -5515,35 +5566,35 @@ function wrapText(text, maxWidth, font, maxLines) {
   if (lines.length === maxLines && words.length) {
     const consumed = lines.join(' ').split(/\s+/).filter(Boolean).length;
     if (consumed < words.length) {
-      lines[lines.length - 1] = trimToWidth(`${lines[lines.length - 1]}...`, maxWidth);
+      lines[lines.length - 1] = trimToWidth(`${lines[lines.length - 1]}...`, maxWidth, measureContext);
     }
   }
 
-  context.restore();
+  measureContext.restore();
   return lines.length ? lines : [''];
 }
 
-function trimToWidth(text, maxWidth) {
+function trimToWidth(text, maxWidth, measureContext = context) {
   let next = String(text || '');
-  while (next.length > 1 && context.measureText(next).width > maxWidth) {
+  while (next.length > 1 && measureContext.measureText(next).width > maxWidth) {
     next = `${next.slice(0, -4)}...`;
   }
   return next;
 }
 
-function drawRoundedRect(x, y, width, height, radius) {
+function drawRoundedRect(targetContext, x, y, width, height, radius) {
   const safeRadius = Math.max(0, Math.min(radius, width / 2, height / 2));
-  context.beginPath();
-  context.moveTo(x + safeRadius, y);
-  context.lineTo(x + width - safeRadius, y);
-  context.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
-  context.lineTo(x + width, y + height - safeRadius);
-  context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
-  context.lineTo(x + safeRadius, y + height);
-  context.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
-  context.lineTo(x, y + safeRadius);
-  context.quadraticCurveTo(x, y, x + safeRadius, y);
-  context.closePath();
+  targetContext.beginPath();
+  targetContext.moveTo(x + safeRadius, y);
+  targetContext.lineTo(x + width - safeRadius, y);
+  targetContext.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  targetContext.lineTo(x + width, y + height - safeRadius);
+  targetContext.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+  targetContext.lineTo(x + safeRadius, y + height);
+  targetContext.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  targetContext.lineTo(x, y + safeRadius);
+  targetContext.quadraticCurveTo(x, y, x + safeRadius, y);
+  targetContext.closePath();
 }
 
 function clamp(value, min, max) {
