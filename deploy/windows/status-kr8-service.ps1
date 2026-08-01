@@ -1,11 +1,13 @@
 param(
   [string]$TaskName = 'Kr8 Studio',
-  [string]$OutputPath = ''
+  [string]$OutputPath = '',
+  [string]$RuntimeDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
-$pidPath = Join-Path $repoRoot 'kr8-editor.pid'
+if (-not $RuntimeDirectory) { $RuntimeDirectory = Join-Path $env:ProgramData 'Kr8 Studio\runtime' }
+$pidPath = Join-Path ([System.IO.Path]::GetFullPath($RuntimeDirectory)) 'kr8-editor.pid'
 $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 $taskInfo = if ($task) { Get-ScheduledTaskInfo -TaskName $TaskName } else { $null }
 $action = if ($task) { $task.Actions | Select-Object -First 1 } else { $null }
@@ -37,8 +39,9 @@ $status = [pscustomobject]@{
 if ($OutputPath) {
   $resolvedOutput = [System.IO.Path]::GetFullPath($OutputPath)
   $resolvedRoot = [System.IO.Path]::GetFullPath($repoRoot)
-  if (-not $resolvedOutput.StartsWith($resolvedRoot + [System.IO.Path]::DirectorySeparatorChar)) {
-    throw 'Status output must stay inside the Kr8 repository.'
+  $resolvedRuntime = [System.IO.Path]::GetFullPath($RuntimeDirectory)
+  if (-not $resolvedOutput.StartsWith($resolvedRuntime + [System.IO.Path]::DirectorySeparatorChar)) {
+    throw 'Status output must stay inside the configured Kr8 runtime directory.'
   }
   $status | ConvertTo-Json | Set-Content -LiteralPath $resolvedOutput -Encoding utf8
 } else {

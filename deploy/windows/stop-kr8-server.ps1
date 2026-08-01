@@ -1,10 +1,12 @@
 param(
-  [int]$WaitSeconds = 10
+  [int]$WaitSeconds = 10,
+  [string]$RuntimeDirectory = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
-$pidPath = Join-Path $repoRoot 'kr8-editor.pid'
+if (-not $RuntimeDirectory) { $RuntimeDirectory = Join-Path $env:ProgramData 'Kr8 Studio\runtime' }
+$pidPath = Join-Path ([System.IO.Path]::GetFullPath($RuntimeDirectory)) 'kr8-editor.pid'
 
 if (-not (Test-Path -LiteralPath $pidPath -PathType Leaf)) {
   Write-Output 'Kr8 Studio PID file is absent; no process was stopped.'
@@ -24,7 +26,7 @@ if (-not $process) {
 }
 
 $commandLine = [string]$process.CommandLine
-if ($process.Name -ne 'node.exe' -or $commandLine -notmatch 'src[/\\]editor[/\\]server\.js' -or $commandLine -notmatch '--port\s+5174') {
+if ($process.Name -ne 'node.exe' -or $commandLine -notmatch 'src[/\\]editor[/\\]server\.js' -or $commandLine -notmatch '--port\s+\d+') {
   throw "PID $recordedPid does not match the expected Kr8 Studio server command. Nothing was stopped."
 }
 

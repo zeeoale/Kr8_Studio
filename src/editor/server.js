@@ -1,6 +1,7 @@
 import { createReadStream, createWriteStream } from 'node:fs';
 import { access, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
+import { timingSafeEqual } from 'node:crypto';
 import { execFile, spawn } from 'node:child_process';
 import http from 'node:http';
 import os from 'node:os';
@@ -76,7 +77,14 @@ import { TikTokProvider } from '../publish/providers/tiktok/tiktokProvider.js';
 import { YouTubeProvider } from '../publish/providers/youtube/youtubeProvider.js';
 import { InstagramProvider } from '../publish/providers/instagram/instagramProvider.js';
 import { resolveAssetPath } from '../shared/path.js';
-import { buildServerConfig, hasAuth, isPathInside, loadEnvFile, readEnvFileValues, resolveServerEnvPath } from '../server/config.js';
+import { buildServerConfig, hasAuth, isExternalBindHost, loadEnvFile, readEnvFileValues, resolveServerEnvPath } from '../server/config.js';
+import {
+  PathSecurityError,
+  assertAbsolutePathWithinRoot,
+  relativePathIdentifier,
+  resolveRelativePathWithinRoot
+} from '../security/pathPolicy.js';
+import { validateHttpRequest } from '../server/requestSecurity.js';
 import { importTkMusicTrack } from '../tkmusic/importTrack.js';
 import {
   TK_MUSIC_PROVIDER,
@@ -150,15 +158,25 @@ export async function createEditorServer(options = {}) {
   youTubeConfig = buildYouTubeConfig();
   instagramConfig = buildInstagramConfig();
   publishService = createPublishService();
-  currentProjectPath = resolveProjectPathForServer(options.projectPath || serverConfig.projectPath || defaultProjectPath);
+  const configuredProjectPath = path.resolve(options.projectPath || serverConfig.projectPath || defaultProjectPath);
+  serverConfig.projectsRoot = resolveApprovedProjectsRoot(serverConfig.projectsRoot, configuredProjectPath);
+  currentProjectPath = assertAbsolutePathWithinRoot(serverConfig.projectsRoot, configuredProjectPath, { mustExist: true });
   currentProjectDirectory = path.dirname(currentProjectPath);
   currentProject = null;
 
   const server = http.createServer(async (request, response) => {
     try {
+      const requestSecurity = validateHttpRequest(request, serverConfig);
+      if (!requestSecurity.allowed) {
+        sendJson(response, requestSecurity.statusCode, { error: requestSecurity.message });
+        return;
+      }
       await routeRequest(request, response);
     } catch (error) {
-      sendJson(response, 500, { error: safeErrorMessage(error, publishSecrets()) });
+      const statusCode = Number(error?.statusCode || 500);
+      sendJson(response, statusCode >= 400 && statusCode < 600 ? statusCode : 500, {
+        error: safeErrorMessage(error, publishSecrets())
+      });
     }
   });
 
@@ -288,42 +306,46 @@ async function routeRequest(request, response) {
   }
 
   if (request.method === 'GET' && url.pathname === '/api/project') {
-    const projectPath = url.searchParams.get('path');
-    if (projectPath) {
-      currentProjectPath = resolveProjectPathForServer(projectPath);
-      currentProjectDirectory = path.dirname(currentProjectPath);
-      currentProject = null;
+    if (url.searchParams.has('path') || url.searchParams.has('id')) {
+      sendJson(response, 400, { error: 'Project switching uses POST /api/project/open.' });
+      return;
     }
-
     const project = await readCurrentProject();
-    sendJson(response, 200, {
-      project,
-      projectPath: currentProjectPath,
-      projectDirectory: currentProjectDirectory
-    });
+    sendJson(response, 200, serializeCurrentProject(project));
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/api/project/open') {
+    const body = JSON.parse(await readRequestBody(request) || '{}');
+    const selectedPath = resolveProjectIdentifier(body.projectId);
+    const project = deserializeProject(await readFile(selectedPath, 'utf8'));
+    assertProjectAssetPaths(project, path.dirname(selectedPath));
+    currentProjectPath = selectedPath;
+    currentProjectDirectory = path.dirname(selectedPath);
+    currentProject = project;
+    sendJson(response, 200, serializeCurrentProject(project));
     return;
   }
 
   if (request.method === 'POST' && url.pathname === '/api/project/select') {
     const selection = await projectFileSelector({ initialDirectory: currentProjectDirectory });
     if (!selection.supported) {
-      sendJson(response, 501, { error: 'Native project selection is unavailable on this host. Enter the project path manually.' });
+      sendJson(response, 501, { error: 'Native project selection is unavailable on this host. Enter a project ID relative to KR8_PROJECTS_ROOT.' });
       return;
     }
     if (!selection.path) {
       sendJson(response, 200, { cancelled: true });
       return;
     }
-    const selectedPath = resolveProjectPathForServer(selection.path);
+    const selectedPath = assertAbsolutePathWithinRoot(serverConfig.projectsRoot, selection.path, { mustExist: true });
     const project = deserializeProject(await readFile(selectedPath, 'utf8'));
+    assertProjectAssetPaths(project, path.dirname(selectedPath));
     currentProjectPath = selectedPath;
     currentProjectDirectory = path.dirname(selectedPath);
     currentProject = project;
     sendJson(response, 200, {
       cancelled: false,
-      project,
-      projectPath: currentProjectPath,
-      projectDirectory: currentProjectDirectory
+      ...serializeCurrentProject(project)
     });
     return;
   }
@@ -607,6 +629,7 @@ async function routeRequest(request, response) {
     const body = await readRequestBody(request);
     const payload = JSON.parse(body || '{}');
     const project = deserializeProject(JSON.stringify(payload.project));
+    assertProjectAssetPaths(project, currentProjectDirectory);
     await writeFile(currentProjectPath, serializeProject(project), 'utf8');
     currentProject = project;
     sendJson(response, 200, {
@@ -1570,11 +1593,10 @@ async function routeRequest(request, response) {
 
   if (request.method === 'GET' && url.pathname.startsWith('/vendor/')) {
     const vendorRoot = path.join(projectRoot, 'node_modules', 'mp4box', 'dist');
-    const requested = decodeURIComponent(url.pathname.replace('/vendor/', ''));
-    const safePath = path.normalize(requested).replace(/^(\.\.[/\\])+/, '');
-    const vendorPath = path.join(vendorRoot, safePath);
-    const safeVendorRoot = `${vendorRoot}${path.sep}`;
-    if (!(vendorPath === vendorRoot || vendorPath.startsWith(safeVendorRoot)) || !(await exists(vendorPath))) {
+    let vendorPath;
+    try {
+      vendorPath = resolveRelativePathWithinRoot(vendorRoot, url.pathname.replace('/vendor/', ''), { mustExist: true });
+    } catch {
       response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
       response.end('Vendor file not found.');
       return;
@@ -1635,26 +1657,53 @@ function decodeYouTubeThumbnail(value) {
 async function readCurrentProject() {
   if (!currentProject) {
     currentProject = deserializeProject(await readFile(currentProjectPath, 'utf8'));
+    assertProjectAssetPaths(currentProject, currentProjectDirectory);
   }
   return currentProject;
 }
 
-function resolveProjectPathForServer(projectPath) {
-  const fallbackProjectPath = serverConfig.projectsRoot
-    ? path.join(path.resolve(serverConfig.projectsRoot), 'blank.kr8', 'project.json')
-    : defaultProjectPath;
-  const resolved = path.resolve(projectPath || fallbackProjectPath);
-  if (serverConfig.projectsRoot && !isPathInside(resolved, serverConfig.projectsRoot)) {
-    throw new Error(`Project path must be inside KR8_PROJECTS_ROOT: ${serverConfig.projectsRoot}`);
+function assertProjectAssetPaths(project, projectDirectory) {
+  for (const asset of project?.assets || []) {
+    if (!asset?.path || asset.missing) continue;
+    resolveAssetPath(projectDirectory, asset);
+  }
+}
+
+function resolveProjectIdentifier(projectId) {
+  const resolved = resolveRelativePathWithinRoot(serverConfig.projectsRoot, projectId, { mustExist: true });
+  if (path.basename(resolved).toLowerCase() !== 'project.json') {
+    throw new PathSecurityError('The project identifier must point to project.json.');
   }
   return resolved;
+}
+
+function resolveApprovedProjectsRoot(configuredRoot, configuredProjectPath) {
+  if (configuredRoot) return path.resolve(configuredRoot);
+  const examplesRoot = path.join(projectRoot, 'examples');
+  try {
+    assertAbsolutePathWithinRoot(examplesRoot, configuredProjectPath);
+    return examplesRoot;
+  } catch {
+    return path.dirname(configuredProjectPath);
+  }
+}
+
+function serializeCurrentProject(project) {
+  return {
+    project,
+    projectId: relativePathIdentifier(serverConfig.projectsRoot, currentProjectPath),
+    projectPath: currentProjectPath,
+    projectDirectory: currentProjectDirectory
+  };
 }
 
 function isAuthorizedRequest(request, response) {
   if (!hasAuth(serverConfig)) return true;
   const header = String(request.headers.authorization || '');
   const expected = `Basic ${Buffer.from(`${serverConfig.auth.username}:${serverConfig.auth.password}`).toString('base64')}`;
-  if (header === expected) return true;
+  const actualBuffer = Buffer.from(header);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer)) return true;
   response.writeHead(401, {
     'content-type': 'text/plain; charset=utf-8',
     'www-authenticate': 'Basic realm="Kr8 Studio"'
@@ -2057,11 +2106,10 @@ function cleanupHeadlessUserData(job) {
 
 async function serveStatic(urlPath, response) {
   const requested = urlPath === '/' ? '/index.html' : urlPath.endsWith('/') ? `${urlPath}index.html` : urlPath;
-  const safePath = path.normalize(decodeURIComponent(requested)).replace(/^(\.\.[/\\])+/, '');
-  const filePath = path.join(publicDir, safePath);
-  const publicRoot = `${publicDir}${path.sep}`;
-
-  if (!(filePath === publicDir || filePath.startsWith(publicRoot)) || !(await exists(filePath))) {
+  let filePath;
+  try {
+    filePath = resolveRelativePathWithinRoot(publicDir, requested.replace(/^\/+/, ''), { mustExist: true });
+  } catch {
     response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
     response.end('Not found');
     return;
@@ -2280,11 +2328,7 @@ async function exists(filePath) {
 
 async function openExportFolder(requestedPath) {
   const projectExportsRoot = path.join(currentProjectDirectory, 'exports');
-  const safeRoot = `${path.resolve(projectExportsRoot)}${path.sep}`;
-  const resolved = path.resolve(String(requestedPath || ''));
-  if (!(resolved === path.resolve(projectExportsRoot) || resolved.startsWith(safeRoot))) {
-    throw new Error('Export path must be inside the current project exports directory.');
-  }
+  const resolved = assertAbsolutePathWithinRoot(projectExportsRoot, requestedPath, { mustExist: true });
 
   const info = await stat(resolved);
   const folder = info.isDirectory() ? resolved : path.dirname(resolved);
@@ -2452,7 +2496,7 @@ function serializeReelJob(job) {
 
 function parseCliArgs(argv) {
   const options = {
-    port: 0,
+    port: undefined,
     host: '',
     projectPath: '',
     projectsRoot: '',
@@ -2491,9 +2535,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const envResult = await loadEnvFile(options.envPath);
   const cliConfig = buildServerConfig(options);
   options.host = options.host || cliConfig.host;
-  options.port = options.port || cliConfig.port;
+  options.port = options.port ?? cliConfig.port;
   options.projectPath = options.projectPath || cliConfig.projectPath || defaultProjectPath;
   const server = await createEditorServer(options);
+  if (isExternalBindHost(options.host)) {
+    console.warn('SECURITY WARNING: Kr8 is binding outside loopback. Use a trusted VPN/firewall and configure KR8_TRUSTED_ORIGINS explicitly.');
+  }
   server.listen(options.port, options.host, () => {
     console.log(`Kr8 editor listening at http://${options.host}:${options.port}`);
     console.log(`Project: ${path.resolve(options.projectPath)}`);

@@ -26,7 +26,8 @@
   },
   "scripts": {
     "test": "node --test",
-    "lint": "npm run check",
+    "lint": "npm run check:security && npm run check",
+    "check:security": "node --check src/security/pathPolicy.js && node --check src/server/requestSecurity.js",
     "build": "node scripts/build.mjs",
     "start": "node --dns-result-order=ipv4first src/editor/server.js",
     "demo:prepare": "node scripts/create-demo-projects.mjs",

@@ -116,6 +116,7 @@ const FALLBACK_FONT_FAMILIES = [
 
 const state = {
   project: null,
+  projectId: '',
   projectPath: '',
   projectDirectory: '',
   selectedLayerId: '',
@@ -352,7 +353,7 @@ const lyricsEditorController = createLyricsEditorController({
 elements.openButton.addEventListener('click', openProjectWithPicker);
 
 elements.saveButton.addEventListener('click', saveProject);
-elements.reloadButton.addEventListener('click', () => loadProject(state.projectPath));
+elements.reloadButton.addEventListener('click', () => loadProject(state.projectId));
 elements.playButton.addEventListener('click', togglePlayback);
 elements.seekBackButton.addEventListener('click', () => seekRelative(-5));
 elements.seekForwardButton.addEventListener('click', () => seekRelative(5));
@@ -586,11 +587,16 @@ async function loadProjectFontFaces() {
   await Promise.all([...new Set(families)].map((family) => loadServerFontFaceByFamily(family)));
 }
 
-async function loadProject(projectPath = '') {
+async function loadProject(projectId = '') {
   setStatus('Loading project...');
   setLoadingSplashMessage('Loading project file');
-  const url = projectPath ? `/api/project?path=${encodeURIComponent(projectPath)}` : '/api/project';
-  const response = await fetch(url);
+  const response = projectId
+    ? await fetch('/api/project/open', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ projectId })
+      })
+    : await fetch('/api/project');
   if (!response.ok) throw new Error(await response.text());
   const payload = await response.json();
 
@@ -605,7 +611,7 @@ async function openProjectWithPicker() {
     const response = await fetch('/api/project/select', { method: 'POST' });
     const payload = await response.json().catch(() => ({}));
     if (response.status === 501) {
-      const input = window.prompt('Project JSON path', state.projectPath);
+      const input = window.prompt('Project ID relative to KR8_PROJECTS_ROOT', state.projectId);
       if (input) await loadProject(input);
       else setStatus('Open cancelled');
       return;
@@ -632,6 +638,7 @@ async function applyLoadedProject(payload) {
       )
     )
   );
+  state.projectId = payload.projectId || '';
   state.projectPath = payload.projectPath;
   state.projectDirectory = payload.projectDirectory;
   state.project.layers = normalizeLayerOrder(state.project.layers);

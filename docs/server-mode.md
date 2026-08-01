@@ -34,6 +34,7 @@ Important variables:
 KR8_SERVER_MODE=1
 KR8_HOST=127.0.0.1
 KR8_PORT=5174
+KR8_TRUSTED_ORIGINS=https://kr8.example.com
 KR8_AUTH_USER=kr8
 KR8_AUTH_PASSWORD=change-me
 KR8_PROJECTS_ROOT=/srv/kr8/projects
@@ -92,7 +93,7 @@ node --dns-result-order=ipv4first src/editor/server.js --server --env .env.serve
 
 For a public VPS IP, keep Kr8 bound to `127.0.0.1` and expose it through a protected reverse proxy or VPN.
 
-For private-network deployment, bind only to the required interface and enforce authentication plus restrictive firewall rules. Do not expose the development server directly to the public internet.
+`--server` still defaults to `127.0.0.1`; it never implies external binding. For private-network deployment, bind only to the required interface and enforce exact `KR8_TRUSTED_ORIGINS`, authentication, and restrictive firewall rules. Do not expose the development server directly to the public internet.
 
 ## Health
 

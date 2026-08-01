@@ -283,5 +283,5 @@ test('createDraftVideoPlan rejects clip paths outside exports', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'kr8-video-draft-'));
   await assert.rejects(() => createDraftVideoPlan(dir, {
     clipPath: path.join(os.tmpdir(), 'outside-clip')
-  }), /inside the current project exports/);
+  }), /requested path is not allowed/);
 });

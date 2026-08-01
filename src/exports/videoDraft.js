@@ -3,6 +3,8 @@ import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 import path from 'node:path';
 
+import { assertAbsolutePathWithinRoot, resolveRelativePathWithinRoot } from '../security/pathPolicy.js';
+
 export const SDR_BT709_FILTER = 'scale=out_color_matrix=bt709:out_range=tv,setparams=range=tv:colorspace=bt709:color_trc=bt709:color_primaries=bt709,format=yuv420p';
 export const SDR_BT709_OUTPUT_ARGS = [
   '-pix_fmt', 'yuv420p',
@@ -29,12 +31,8 @@ export async function resolveFfmpegCommand(command = process.env.KR8_FFMPEG_PATH
 }
 
 export async function createDraftVideoPlan(projectDirectory, options = {}) {
-  const clipPath = path.resolve(String(options.clipPath || ''));
   const projectExportsRoot = path.resolve(projectDirectory, 'exports');
-  const safeExportsRoot = `${projectExportsRoot}${path.sep}`;
-  if (!(clipPath === projectExportsRoot || clipPath.startsWith(safeExportsRoot))) {
-    throw new Error('Clip path must be inside the current project exports directory.');
-  }
+  const clipPath = assertAbsolutePathWithinRoot(projectExportsRoot, options.clipPath, { mustExist: true });
 
   const manifestPath = path.join(clipPath, 'manifest.json');
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
@@ -55,10 +53,7 @@ export async function createDraftVideoPlan(projectDirectory, options = {}) {
   const frames = [];
 
   for (const frame of manifest.frames) {
-    const framePath = path.resolve(clipPath, frame.relativePath);
-    if (!framePath.startsWith(`${clipPath}${path.sep}`)) {
-      throw new Error('Frame path escapes the clip directory.');
-    }
+    const framePath = resolveRelativePathWithinRoot(clipPath, frame.relativePath, { mustExist: true });
     await access(framePath, fsConstants.F_OK);
     frames.push(framePath);
   }

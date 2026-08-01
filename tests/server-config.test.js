@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { buildServerConfig, hasAuth, isPathInside, loadEnvFile, readEnvFileValues, resolveServerEnvPath } from '../src/server/config.js';
+import { buildServerConfig, hasAuth, isExternalBindHost, loadEnvFile, readEnvFileValues, resolveServerEnvPath } from '../src/server/config.js';
 
 test('loadEnvFile reads simple key value pairs without overriding existing env', async () => {
   const originalValue = process.env.KR8_AUTH_USER;
@@ -56,7 +56,7 @@ test('resolveServerEnvPath defaults CLI startup to project .env.local and preser
   assert.equal(resolveServerEnvPath('config/server.env', projectRoot), path.resolve('config/server.env'));
 });
 
-test('buildServerConfig enables server host defaults and auth detection', () => {
+test('buildServerConfig keeps server mode on loopback unless external binding is explicit', () => {
   const previous = snapshotEnv([
     'KR8_SERVER_MODE',
     'KR8_AUTH_USER',
@@ -73,16 +73,22 @@ test('buildServerConfig enables server host defaults and auth detection', () => 
   const config = buildServerConfig();
 
   assert.equal(config.serverMode, true);
-  assert.equal(config.host, '0.0.0.0');
+  assert.equal(config.host, '127.0.0.1');
   assert.equal(hasAuth(config), true);
   assert.equal(config.internalOrigin, 'http://127.0.0.1:5174');
   assert.equal(config.chromeNoSandbox, true);
   restoreEnv(previous);
 });
 
-test('isPathInside accepts descendants and rejects sibling paths', () => {
-  assert.equal(isPathInside('/srv/kr8/projects/song.kr8/project.json', '/srv/kr8/projects'), true);
-  assert.equal(isPathInside('/srv/kr8-other/project.json', '/srv/kr8/projects'), false);
+test('buildServerConfig accepts an explicit external bind without making it a fallback', () => {
+  const previous = snapshotEnv(['KR8_HOST', 'KR8_SERVER_MODE']);
+  delete process.env.KR8_HOST;
+  process.env.KR8_SERVER_MODE = '1';
+  assert.equal(buildServerConfig().host, '127.0.0.1');
+  assert.equal(buildServerConfig({ host: '0.0.0.0' }).host, '0.0.0.0');
+  assert.equal(isExternalBindHost('0.0.0.0'), true);
+  assert.equal(isExternalBindHost('127.0.0.1'), false);
+  restoreEnv(previous);
 });
 
 function snapshotEnv(keys) {

@@ -55,7 +55,11 @@ test('Lyrics Editor API applies a controlled asset without saving project.json i
     assert.equal(saveResponse.status, 200);
     const saved = JSON.parse(await readFile(projectPath, 'utf8'));
     assert.equal(saved.assets.some((asset) => asset.id === payload.asset.id), true);
-    const reloadResponse = await fetch(`http://127.0.0.1:${port}/api/project?path=${encodeURIComponent(projectPath)}`);
+    const reloadResponse = await fetch(`http://127.0.0.1:${port}/api/project/open`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ projectId: 'project.json' })
+    });
     assert.equal(reloadResponse.status, 200);
     const reloaded = await reloadResponse.json();
     assert.equal(reloaded.project.assets.find((asset) => asset.id === payload.asset.id).path, 'assets/lyrics.kr8.json');

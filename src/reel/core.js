@@ -2,6 +2,8 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 import path from 'node:path';
 
+import { assertAbsolutePathWithinRoot, normalizeRelativeIdentifier, resolveRelativePathWithinRoot } from '../security/pathPolicy.js';
+
 export const REEL_SETTINGS_SCHEMA_VERSION = 1;
 export const REEL_SETTINGS_RELATIVE_PATH = 'exports/reel/reel-mode.json';
 
@@ -114,14 +116,11 @@ export function getReelSettingsPath(projectDirectory) {
 }
 
 export function resolveReelProjectPath(projectDirectory, relativePath, options = {}) {
-  const raw = normalizeRelativePath(relativePath);
+  const raw = String(relativePath || '').trim();
   if (!raw) return '';
   const root = path.resolve(projectDirectory, options.root || 'exports');
-  const resolved = path.resolve(projectDirectory, raw);
-  if (!(resolved === root || resolved.startsWith(`${root}${path.sep}`))) {
-    throw new Error('Reel path must stay inside the current project exports directory.');
-  }
-  return resolved;
+  const resolved = resolveRelativePathWithinRoot(projectDirectory, raw);
+  return assertAbsolutePathWithinRoot(root, resolved);
 }
 
 export async function assertExistingReelSource(projectDirectory, relativePath) {
@@ -161,7 +160,7 @@ export async function saveReelWatermarkImage(projectDirectory, input = {}) {
 }
 
 export function normalizeRelativePath(value) {
-  return String(value || '').trim().replaceAll('\\', '/').replace(/^\/+/, '');
+  return normalizeRelativeIdentifier(value, { allowEmpty: true });
 }
 
 function finiteRange(value, min, max, fallback) {

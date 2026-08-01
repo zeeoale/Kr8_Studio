@@ -3,6 +3,7 @@ import { constants as fsConstants } from 'node:fs';
 import path from 'node:path';
 
 import { probeReelSource } from '../reel/export.js';
+import { assertAbsolutePathWithinRoot, resolveRelativePathWithinRoot } from '../security/pathPolicy.js';
 
 const CONTAINERS = new Map([
   ['.mp4', 'video/mp4'],
@@ -23,8 +24,10 @@ export async function findLatestValidReelExport(projectDirectory) {
       const metadata = JSON.parse(await readFile(metadataPath, 'utf8'));
       if (metadata.type !== 'kr8-reel-render-metadata') continue;
       const rawPath = String(metadata.relativePath || metadata.outputPath || '');
-      const outputPath = path.isAbsolute(rawPath) ? path.resolve(rawPath) : path.resolve(projectDirectory, rawPath);
-      if (!(outputPath === reelsDirectory || outputPath.startsWith(`${reelsDirectory}${path.sep}`))) continue;
+      const outputPath = path.isAbsolute(rawPath)
+        ? assertAbsolutePathWithinRoot(reelsDirectory, rawPath)
+        : resolveRelativePathWithinRoot(projectDirectory, rawPath);
+      assertAbsolutePathWithinRoot(reelsDirectory, outputPath);
       const info = await stat(outputPath);
       if (!info.isFile() || info.size <= 0) continue;
       candidates.push({

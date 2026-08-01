@@ -37,8 +37,9 @@ export function resolveServerEnvPath(value, projectRoot = process.cwd()) {
 
 export function buildServerConfig(options = {}) {
   const serverMode = readBoolean(process.env.KR8_SERVER_MODE, false) || options.serverMode === true;
-  const host = options.host || process.env.KR8_HOST || (serverMode ? '0.0.0.0' : '127.0.0.1');
-  const port = Number(options.port || process.env.KR8_PORT || 5174);
+  const host = String(options.host || process.env.KR8_HOST || '127.0.0.1').trim();
+  const portValue = options.port ?? process.env.KR8_PORT;
+  const port = Number(portValue === undefined || portValue === '' ? 5174 : portValue);
   return {
     serverMode,
     host,
@@ -51,6 +52,7 @@ export function buildServerConfig(options = {}) {
     ffprobePath: options.ffprobePath || process.env.KR8_FFPROBE_PATH || '',
     browserPath: process.env.KR8_BROWSER_PATH || '',
     internalOrigin: process.env.KR8_INTERNAL_ORIGIN || '',
+    trustedOrigins: parseTrustedOrigins(options.trustedOrigins ?? process.env.KR8_TRUSTED_ORIGINS),
     chromeNoSandbox: readBoolean(process.env.KR8_CHROME_NO_SANDBOX, false),
     auth: {
       username: process.env.KR8_AUTH_USER || '',
@@ -67,14 +69,13 @@ export function buildServerConfig(options = {}) {
   };
 }
 
-export function hasAuth(config) {
-  return Boolean(config?.auth?.username && config?.auth?.password);
+export function isExternalBindHost(host) {
+  const normalized = String(host || '').trim().toLowerCase();
+  return !['127.0.0.1', 'localhost', '::1', '[::1]'].includes(normalized);
 }
 
-export function isPathInside(candidate, root) {
-  const resolvedRoot = path.resolve(root);
-  const resolvedCandidate = path.resolve(candidate);
-  return resolvedCandidate === resolvedRoot || resolvedCandidate.startsWith(`${resolvedRoot}${path.sep}`);
+export function hasAuth(config) {
+  return Boolean(config?.auth?.username && config?.auth?.password);
 }
 
 function unquoteEnvValue(value) {
@@ -100,4 +101,8 @@ function normalizeLocalServiceUrl(value, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function parseTrustedOrigins(value) {
+  return String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
 }

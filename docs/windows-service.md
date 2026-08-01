@@ -1,126 +1,88 @@
-# Kr8 Windows unattended service
+# Advanced Windows unattended deployment
 
-## Decision
+## Not the Public Default
 
-Kr8 runs at Windows boot through a Scheduled Task named `Kr8 Studio`, under the built-in `SYSTEM` service account, whether or not a user has logged on. This provides the required unattended behavior without adding NSSM, WinSW or another native wrapper.
+Kr8 Studio does not install a Windows service automatically. The normal public setup runs as the logged-in user and binds to `127.0.0.1`. The scripts in `deploy/windows/` exist only for a private installation that must operate before login.
 
-`node.exe` cannot be registered directly with the Service Control Manager because it does not implement the Windows service control protocol. The Task Scheduler configuration is therefore the smallest built-in and reversible service host for the existing Node process.
+Running Node and Chromium as `SYSTEM` increases impact if the application or a media parser is compromised. Prefer a dedicated least-privileged service account or normal user startup whenever pre-login access is unnecessary.
 
-The task:
+## Required Security Layout
 
-- triggers at Windows startup after a short delay;
-- runs as `SYSTEM` with no interactive login;
-- starts one Kr8 instance on `0.0.0.0:5174`;
-- uses `examples/blank.kr8/project.json` by default;
-- restarts the launcher after a process failure;
-- ignores duplicate task starts;
-- records the exact Node PID in `kr8-editor.pid`;
-- writes stdout and stderr under `logs/`;
-- uses absolute Node, FFmpeg and Chrome paths.
+The advanced installer refuses to create a SYSTEM task unless:
 
-## Publisher credentials
+- `-AcknowledgeSystemServiceRisk` is supplied explicitly;
+- the executable checkout is below `C:\Program Files`;
+- executable files receive read/execute-only ACLs for the installing user;
+- projects, Publisher data, logs, PID state, and configuration are placed below ACL-restricted `C:\ProgramData\Kr8 Studio`;
+- external binding is separately enabled with `-AllowExternalBinding`.
 
-The `SYSTEM` account has a different profile from the desktop user and cannot use `%APPDATA%\Kr8 Studio\publish`. Service mode instead uses:
+Do not point SYSTEM at a checkout under a user profile, Downloads, Desktop, or another user-writable directory. Install dependencies and verify the build before locking the executable directory ACL.
 
-```text
-C:\ProgramData\Kr8 Studio\publish
-```
+## Safe Loopback Installation
 
-The installer can copy the existing TikTok, YouTube and Instagram credential records plus non-sensitive Publisher settings into that directory. Source files remain intact. It never prints or parses token contents. Directory ACLs grant access only to `SYSTEM`, Administrators and the installing user.
-
-OAuth token refresh and normal publishing work from the service. Interactive reconnect flows should be performed while the user is logged into Windows; a `SYSTEM` process cannot display a browser in the user's desktop session. Existing migrated refresh tokens avoid requiring a login at boot.
-
-## Install
-
-Open PowerShell as Administrator and run:
+From an elevated PowerShell, with the repository already installed under `C:\Program Files\Kr8 Studio\app`:
 
 ```powershell
-cd C:\Path\To\Kr8_Studio_Public
-Set-ExecutionPolicy -Scope Process Bypass
+cd 'C:\Program Files\Kr8 Studio\app'
 .\deploy\windows\install-kr8-service.ps1 `
+  -AcknowledgeSystemServiceRisk `
   -MigratePublisherCredentials `
-  -ReplaceRunningInstance `
   -StartAfterInstall
 ```
 
-The process-scoped execution policy does not modify global PowerShell configuration. The installer detects the current absolute FFmpeg path; use `-FfmpegPath` only if detection fails.
+This remains bound to `127.0.0.1`. It is suitable for a same-machine reverse proxy or local automation.
 
-## Status
+## Private VPN Binding
+
+For a VPN-only interface, first configure exact origins in the protected service environment file:
+
+```text
+KR8_TRUSTED_ORIGINS=https://kr8.private.example
+KR8_AUTH_USER=kr8
+KR8_AUTH_PASSWORD=a-long-unique-password
+```
+
+Then install with explicit network acknowledgement:
+
+```powershell
+.\deploy\windows\install-kr8-service.ps1 `
+  -AcknowledgeSystemServiceRisk `
+  -ListenHost '0.0.0.0' `
+  -AllowExternalBinding `
+  -EnvironmentFile 'C:\secure-staging\kr8-service.env' `
+  -StartAfterInstall
+```
+
+Restrict TCP 5174 to the trusted VPN interface and authorized peers in Windows Firewall. Never port-forward it from the public internet. Binding to `0.0.0.0` is not access control.
+
+## Data and Credentials
+
+Defaults are:
+
+```text
+C:\ProgramData\Kr8 Studio\projects
+C:\ProgramData\Kr8 Studio\publish
+C:\ProgramData\Kr8 Studio\runtime
+C:\ProgramData\Kr8 Studio\config\.env.local
+```
+
+The optional credential migration copies only known Publisher store files and never reads or prints their contents. `-EnvironmentFile` is also opt-in and copies the file into the protected configuration directory. OAuth reconnect still needs an interactive logged-in browser; a SYSTEM process cannot display one on the user's desktop.
+
+## Operations
 
 ```powershell
 .\deploy\windows\status-kr8-service.ps1
-```
-
-Expected values are `Installed: True`, `TaskState: Running`, `ProcessMatchesKr8: True`, a listener PID, and `Health: ok`.
-
-The same endpoint can then be checked over WireGuard:
-
-```text
-http://127.0.0.1:5174/api/health
-```
-
-## Controlled stop
-
-```powershell
-.\deploy\windows\stop-kr8-server.ps1
-```
-
-The script reads `kr8-editor.pid`, verifies that the PID is a Node process running `src/editor/server.js` on port 5174, and only then stops that PID. It never terminates Node globally.
-
-To start it again:
-
-```powershell
-Start-ScheduledTask -TaskName 'Kr8 Studio'
-```
-
-For the normal controlled restart, use an elevated PowerShell:
-
-```powershell
 .\deploy\windows\restart-kr8-service.ps1
-```
-
-From a regular PowerShell window, the same restart can request elevation through UAC:
-
-```powershell
-Start-Process powershell.exe -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File "C:\Path\To\Kr8_Studio_Public\deploy\windows\restart-kr8-service.ps1"'
-```
-
-This validates and stops only the PID recorded for Kr8, then restarts the installed task. `logs\kr8-service-runtime.json` records only non-secret runtime paths and the service account for diagnostics.
-
-## Verified installation
-
-Local validation completed on 2026-07-22:
-
-- task installed and running as `NT AUTHORITY\SYSTEM` with `ServiceAccount` logon;
-- boot trigger and `ServiceMode` enabled;
-- recorded PID matched the process listening on `0.0.0.0:5174`;
-- `/api/health` returned `status: ok`;
-- the default project was `examples/blank.kr8/project.json`;
-- the shared Publisher store resolved to `C:\ProgramData\Kr8 Studio\publish`;
-- TikTok, YouTube and Instagram connection summaries were available from service mode;
-- all 213 automated tests passed;
-- `npm run check` passed;
-- every PowerShell deployment script parsed successfully.
-
-No global Node process termination is used by install, stop, restart or uninstall. The remaining acceptance check is the no-login reboot described below.
-
-## Uninstall
-
-From an elevated PowerShell:
-
-```powershell
+.\deploy\windows\stop-kr8-server.ps1
 .\deploy\windows\uninstall-kr8-service.ps1
 ```
 
-Publisher credentials are preserved by default. Removing them requires the separate explicit `-RemovePublisherData` switch.
+Stop and restart scripts act only on the recorded PID after verifying that it is the expected Kr8 Node command. They never terminate Node globally. Uninstall preserves service data unless an explicit removal switch is supplied.
 
-## Boot acceptance test
+## Manual Verification
 
-1. Verify the task and health locally.
-2. Restart Windows without logging in.
-3. Wait for WireGuard and the configured startup delay.
-4. From an authorized private-network client, request the configured `/api/health` URL.
-5. From the phone, confirm TK Workstation Remote turns Kr8 green and opens `/mobile`.
-6. Confirm the current project is the blank project and the Publisher provider summary can be read.
-
-The unattended requirement is complete only after this no-login reboot test.
+1. Confirm `npm test`, `npm run lint`, and `npm run build` before installation.
+2. Confirm the task account and executable ACLs with `Get-ScheduledTask` and `icacls`.
+3. Confirm `127.0.0.1:5174` is the only listener for a loopback installation.
+4. For VPN mode, test that non-VPN clients cannot connect and untrusted Host/Origin values receive 4xx responses.
+5. Reboot without logging in and verify `/api/health` through the intended private path.

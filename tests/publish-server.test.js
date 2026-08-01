@@ -97,6 +97,7 @@ test('editor server opens a selected Kr8 project without requiring a typed path'
   await writeFile(selectedPath, JSON.stringify(project('Selected')));
   const server = await createEditorServer({
     projectPath: firstPath,
+    projectsRoot: root,
     host: '127.0.0.1',
     port: 0,
     projectFileSelector: async () => ({ supported: true, path: selectedPath })

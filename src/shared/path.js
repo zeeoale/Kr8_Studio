@@ -1,5 +1,7 @@
 import path from 'node:path';
 
+import { resolveRelativePathWithinRoot } from '../security/pathPolicy.js';
+
 export function toPosixPath(value) {
   return String(value || '').replaceAll('\\', '/');
 }
@@ -17,7 +19,7 @@ export function isBase64LikeAssetPath(value) {
 }
 
 export function resolveProjectPath(projectDirectory, relativePath) {
-  return path.resolve(projectDirectory, String(relativePath || '').replaceAll('/', path.sep));
+  return resolveRelativePathWithinRoot(projectDirectory, relativePath);
 }
 
 export function resolveAssetPath(projectDirectory, asset) {

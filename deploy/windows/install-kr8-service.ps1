@@ -5,13 +5,23 @@ param(
   [string]$FfmpegPath = '',
   [string]$BrowserPath = 'C:\Program Files\Google\Chrome\Application\chrome.exe',
   [string]$PublishDataDirectory = '',
+  [string]$ProjectsRoot = '',
+  [string]$RuntimeDirectory = '',
+  [string]$EnvironmentFile = '',
+  [string]$ListenHost = '127.0.0.1',
+  [int]$Port = 5174,
   [int]$StartupDelaySeconds = 15,
+  [switch]$AcknowledgeSystemServiceRisk,
+  [switch]$AllowExternalBinding,
   [switch]$MigratePublisherCredentials,
   [switch]$ReplaceRunningInstance,
   [switch]$StartAfterInstall
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not $AcknowledgeSystemServiceRisk) {
+  throw 'This is an advanced SYSTEM deployment. Re-run only after reviewing docs/windows-service.md and pass -AcknowledgeSystemServiceRisk.'
+}
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -19,10 +29,33 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
 }
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
+$programFilesRoot = [System.IO.Path]::GetFullPath($env:ProgramFiles)
+if (-not $repoRoot.StartsWith($programFilesRoot + [System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+  throw 'SYSTEM service code must be installed below Program Files. A user-writable source checkout is not accepted.'
+}
+$externalBinding = $ListenHost -notin @('127.0.0.1', 'localhost', '::1', '[::1]')
+if ($externalBinding -and -not $AllowExternalBinding) {
+  throw 'External binding requires the explicit -AllowExternalBinding switch.'
+}
+if ($externalBinding) {
+  Write-Warning 'External Kr8 binding is enabled. Restrict it to a trusted VPN with firewall rules and configured trusted origins.'
+}
 $launcherPath = Join-Path $PSScriptRoot 'start-kr8-server.ps1'
 $stopPath = Join-Path $PSScriptRoot 'stop-kr8-server.ps1'
-if (-not $ProjectPath) { $ProjectPath = Join-Path $repoRoot 'examples\blank.kr8\project.json' }
 if (-not $PublishDataDirectory) { $PublishDataDirectory = Join-Path $env:ProgramData 'Kr8 Studio\publish' }
+if (-not $ProjectsRoot) { $ProjectsRoot = Join-Path $env:ProgramData 'Kr8 Studio\projects' }
+if (-not $RuntimeDirectory) { $RuntimeDirectory = Join-Path $env:ProgramData 'Kr8 Studio\runtime' }
+$ProjectsRoot = [System.IO.Path]::GetFullPath($ProjectsRoot)
+$RuntimeDirectory = [System.IO.Path]::GetFullPath($RuntimeDirectory)
+New-Item -ItemType Directory -Path $ProjectsRoot,$RuntimeDirectory -Force | Out-Null
+if (-not $ProjectPath) {
+  $blankDirectory = Join-Path $ProjectsRoot 'blank.kr8'
+  New-Item -ItemType Directory -Path $blankDirectory -Force | Out-Null
+  $ProjectPath = Join-Path $blankDirectory 'project.json'
+  if (-not (Test-Path -LiteralPath $ProjectPath -PathType Leaf)) {
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'examples\blank.kr8\project.json') -Destination $ProjectPath
+  }
+}
 if (-not $FfmpegPath) {
   $ffmpegCommand = Get-Command ffmpeg.exe -ErrorAction SilentlyContinue
   if ($ffmpegCommand) { $FfmpegPath = $ffmpegCommand.Source }
@@ -42,8 +75,21 @@ if (-not (Test-Path -LiteralPath $BrowserPath -PathType Leaf)) {
 
 New-Item -ItemType Directory -Path $PublishDataDirectory -Force | Out-Null
 $currentUserSid = $identity.User.Value
-& icacls.exe $PublishDataDirectory '/inheritance:r' '/grant:r' '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' "*$currentUserSid`:(OI)(CI)M" | Out-Null
-if ($LASTEXITCODE -ne 0) { throw 'Could not secure the Kr8 Publisher service data directory.' }
+foreach ($dataDirectory in @($PublishDataDirectory, $ProjectsRoot, $RuntimeDirectory)) {
+  & icacls.exe $dataDirectory '/inheritance:r' '/grant:r' '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' "*$currentUserSid`:(OI)(CI)M" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "Could not secure service data directory: $dataDirectory" }
+}
+& icacls.exe $repoRoot '/inheritance:r' '/grant:r' '*S-1-5-18:(OI)(CI)RX' '*S-1-5-32-544:(OI)(CI)F' "*$currentUserSid`:(OI)(CI)RX" | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'Could not secure the Kr8 executable directory.' }
+
+$serviceEnvPath = Join-Path $env:ProgramData 'Kr8 Studio\config\.env.local'
+if ($EnvironmentFile) {
+  $serviceEnvDirectory = Split-Path -Parent $serviceEnvPath
+  New-Item -ItemType Directory -Path $serviceEnvDirectory -Force | Out-Null
+  Copy-Item -LiteralPath ([System.IO.Path]::GetFullPath($EnvironmentFile)) -Destination $serviceEnvPath -Force
+  & icacls.exe $serviceEnvDirectory '/inheritance:r' '/grant:r' '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' "*$currentUserSid`:(OI)(CI)R" | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'Could not secure the Kr8 service environment directory.' }
+}
 
 if ($MigratePublisherCredentials) {
   $sourceDirectory = Join-Path $env:APPDATA 'Kr8 Studio\publish'
@@ -70,9 +116,15 @@ $powerShellArguments = @(
   '-NodePath', (Quote-TaskArgument $NodePath),
   '-ProjectPath', (Quote-TaskArgument $ProjectPath),
   '-PublishDataDirectory', (Quote-TaskArgument $PublishDataDirectory),
+  '-ProjectsRoot', (Quote-TaskArgument $ProjectsRoot),
+  '-RuntimeDirectory', (Quote-TaskArgument $RuntimeDirectory),
+  '-EnvPath', (Quote-TaskArgument $serviceEnvPath),
+  '-ListenHost', (Quote-TaskArgument $ListenHost),
+  '-Port', [string]$Port,
   '-FfmpegPath', (Quote-TaskArgument $FfmpegPath),
   '-BrowserPath', (Quote-TaskArgument $BrowserPath)
 ) -join ' '
+if ($AllowExternalBinding) { $powerShellArguments += ' -AllowExternalBinding' }
 
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $powerShellArguments -WorkingDirectory $repoRoot
 $trigger = New-ScheduledTaskTrigger -AtStartup

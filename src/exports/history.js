@@ -2,6 +2,8 @@ import { access, readFile, readdir, stat } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 import path from 'node:path';
 
+import { assertAbsolutePathWithinRoot, resolveRelativePathWithinRoot } from '../security/pathPolicy.js';
+
 export async function listRenderHistory(projectDirectory, options = {}) {
   const limit = Math.max(1, Math.min(100, Math.round(Number(options.limit || 20))));
   const videosDir = path.join(projectDirectory, 'exports', 'videos');
@@ -43,10 +45,12 @@ async function readRenderMetadata(projectDirectory, metadataPath) {
     const metadata = JSON.parse(await readFile(metadataPath, 'utf8'));
     if (metadata.type !== 'kr8-render-metadata') return null;
 
-    const outputPath = resolveProjectPath(projectDirectory, metadata.outputPath || metadata.relativePath);
     const exportsRoot = path.resolve(projectDirectory, 'exports');
-    const safeExportsRoot = `${exportsRoot}${path.sep}`;
-    if (!(outputPath === exportsRoot || outputPath.startsWith(safeExportsRoot))) return null;
+    const rawPath = String(metadata.outputPath || metadata.relativePath || '');
+    const outputPath = path.isAbsolute(rawPath)
+      ? assertAbsolutePathWithinRoot(exportsRoot, rawPath)
+      : resolveRelativePathWithinRoot(projectDirectory, rawPath);
+    assertAbsolutePathWithinRoot(exportsRoot, outputPath);
 
     let sizeBytes = 0;
     try {
@@ -73,10 +77,4 @@ async function readRenderMetadata(projectDirectory, metadataPath) {
   } catch {
     return null;
   }
-}
-
-function resolveProjectPath(projectDirectory, value) {
-  const raw = String(value || '');
-  if (!raw) return '';
-  return path.isAbsolute(raw) ? path.resolve(raw) : path.resolve(projectDirectory, raw);
 }

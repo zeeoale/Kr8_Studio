@@ -1,6 +1,7 @@
 param(
   [string]$TaskName = 'Kr8 Studio',
-  [switch]$RemovePublisherData
+  [switch]$RemovePublisherData,
+  [switch]$RemoveAllServiceData
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,5 +26,16 @@ if ($RemovePublisherData) {
   Remove-Item -LiteralPath $resolved -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+if ($RemoveAllServiceData) {
+  $serviceDataPath = Join-Path $env:ProgramData 'Kr8 Studio'
+  $programDataRoot = [System.IO.Path]::GetFullPath($env:ProgramData)
+  $resolvedServiceData = [System.IO.Path]::GetFullPath($serviceDataPath)
+  if (-not $resolvedServiceData.StartsWith($programDataRoot + [System.IO.Path]::DirectorySeparatorChar)) {
+    throw 'Refusing to remove Kr8 service data outside ProgramData.'
+  }
+  Remove-Item -LiteralPath $resolvedServiceData -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 Write-Output "Kr8 Studio boot task removed: $TaskName"
 Write-Output "Publisher data removed: $($RemovePublisherData.IsPresent)"
+Write-Output "All service data removed: $($RemoveAllServiceData.IsPresent)"

@@ -198,10 +198,11 @@ Copy `.env.example` to `.env.local`. Important variables include:
 | --- | --- | --- |
 | `KR8_HOST` | Bind host | `127.0.0.1` |
 | `KR8_PORT` | Editor port | `5174` |
+| `KR8_TRUSTED_ORIGINS` | Exact opt-in VPN/proxy origins | unset |
 | `KR8_FFMPEG_PATH` | Explicit FFmpeg executable | `ffmpeg` on PATH |
 | `KR8_FFPROBE_PATH` | Explicit FFprobe executable | `ffprobe` on PATH |
 | `KR8_BROWSER_PATH` | Chromium executable for headless export | auto-detected |
-| `KR8_PROJECTS_ROOT` | Allowed server-mode projects root | unset |
+| `KR8_PROJECTS_ROOT` | Approved root for project selection and access | inferred safely |
 | `KR8_TKMUSIC_LIBRARY_ROOT` | Optional TKMusic library | unset |
 | `KR8_OLLAMA_URL` | Optional Ollama endpoint | loopback |
 | `KR8_COMFYUI_URL` | Optional ComfyUI endpoint | loopback |
@@ -232,7 +233,11 @@ See [Troubleshooting](docs/troubleshooting.md).
 
 Editing is local. Kr8 has no implicit telemetry and performs no automatic media upload. Ollama and ComfyUI default to loopback. Publishing happens only after explicit configuration and user action. Treat imported media as untrusted and keep FFmpeg current.
 
-See [Privacy](docs/privacy.md) and [Security Policy](SECURITY.md).
+The public default binds only to `127.0.0.1`, including `--server` mode. Binding to `0.0.0.0` or another interface must be explicit and does not by itself authorize browser access: configure exact `KR8_TRUSTED_ORIGINS`, authentication, a trusted VPN, and firewall rules. Project and asset access is restricted to canonical approved roots; the browser opens projects by root-relative identifier rather than arbitrary filesystem path.
+
+The scripts under `deploy/windows/` are an advanced private deployment option. They are not run by installation or `npm start`, and the SYSTEM task installer requires explicit risk acknowledgement, protected executable files under `Program Files`, and mutable data under `ProgramData`.
+
+See [Privacy](docs/privacy.md), [Security Policy](SECURITY.md), [Threat Model](THREAT_MODEL.md), and [Windows deployment](docs/windows-service.md).
 The current sanitization and release-readiness results are recorded in the
 [Public Release Audit](docs/PUBLIC_RELEASE_AUDIT.md).
 
