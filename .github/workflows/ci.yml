@@ -18,6 +18,12 @@ jobs:
         with:
           node-version: "26.4.0"
           cache: npm
+      - name: Install FFmpeg and FFprobe
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
+          ffmpeg -version
+          ffprobe -version
       - run: npm ci
       - run: npm run demo:prepare
       - run: npm run lint
