@@ -75,7 +75,7 @@ export function serializeMobileRenderJob(job) {
     startedAt: String(job.startedAt || ''),
     completedAt: String(job.completedAt || ''),
     error: String(job.error || ''),
-    output: outputPath ? { filename: path.basename(outputPath) } : null
+    output: outputPath ? { filename: path.win32.basename(outputPath) } : null
   };
 }
 

@@ -10,7 +10,7 @@ import {
 
 test('native project picker accepts only project.json and handles cancellation', () => {
   assert.equal(normalizeSelectedProjectPath(''), '');
-  assert.equal(path.basename(normalizeSelectedProjectPath('C:\\Kr8\\song.kr8\\project.json')), 'project.json');
+  assert.equal(path.win32.basename(normalizeSelectedProjectPath('C:\\Kr8\\song.kr8\\project.json')), 'project.json');
   assert.throws(() => normalizeSelectedProjectPath('C:\\Kr8\\song.kr8\\other.json'), /project\.json/);
 });
 
@@ -27,7 +27,7 @@ test('native project picker passes a safe Windows dialog script to PowerShell', 
   assert.equal(call.command, 'powershell.exe');
   assert.ok(call.args.includes('-STA'));
   assert.match(call.args.at(-1), /Artist''s Song/);
-  assert.equal(path.basename(result.path), 'project.json');
+  assert.equal(path.win32.basename(result.path), 'project.json');
 });
 
 test('native project picker reports unsupported hosts without launching a process', async () => {
