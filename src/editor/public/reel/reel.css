@@ -42,7 +42,7 @@ footer { border-top: 1px solid #2b313a; border-bottom: 0; color: #9ea7b4; font-s
 h2 { margin: 0 0 12px; font-size: 13px; }
 .source-summary { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin-bottom: 12px; }
 .source-summary span { color: #949eac; font-size: 12px; }
-.source-summary strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.source-summary select { min-width: 0; height: 34px; overflow: hidden; text-overflow: ellipsis; }
 .source-summary code { grid-column: 1 / -1; color: #8f9bab; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
 .video-stage {
   position: relative; display: grid; place-items: center; min-width: 0; min-height: 0;

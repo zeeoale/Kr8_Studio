@@ -55,7 +55,12 @@ import {
   finalizeDirectVideoSession,
   renderDraftVideo
 } from '../exports/videoDraft.js';
-import { findLatestValidRenderExport, listRenderHistory } from '../exports/history.js';
+import {
+  findLatestValidRenderExport,
+  findValidRenderExport,
+  listRenderHistory,
+  listValidRenderExports
+} from '../exports/history.js';
 import {
   assertExistingReelSource,
   loadReelSettings,
@@ -1224,8 +1229,11 @@ async function routeRequest(request, response) {
 
   if (request.method === 'GET' && url.pathname === '/api/reel/context') {
     const project = await readCurrentProject();
-    const latestExport = await findLatestValidRenderExport(currentProjectDirectory);
-    if (!latestExport) {
+    const sources = await listValidRenderExports(currentProjectDirectory, { limit: 100 });
+    const storedSettings = await loadReelSettings(currentProjectDirectory, 0);
+    const requestedSource = String(url.searchParams.get('source') || storedSettings.sourceVideo || '');
+    const selectedExport = selectReelRenderSource(sources, requestedSource);
+    if (!selectedExport) {
       sendJson(response, 200, {
         available: false,
         projectName: project.name,
@@ -1234,17 +1242,18 @@ async function routeRequest(request, response) {
       });
       return;
     }
-    const media = await probeReelSource(latestExport.outputPath);
-    const settings = await loadReelSettings(currentProjectDirectory, media.duration, latestExport.relativePath);
+    const media = await probeReelSource(selectedExport.outputPath);
+    const settings = await loadReelSettings(currentProjectDirectory, media.duration, selectedExport.relativePath);
     sendJson(response, 200, {
       available: true,
       projectName: project.name,
       projectPath: currentProjectPath,
       projectDirectory: currentProjectDirectory,
       exportDirectory: path.join(currentProjectDirectory, 'exports', 'reels'),
+      sources,
       source: {
-        ...latestExport,
-        sourceUrl: `/api/reel/source?path=${encodeURIComponent(latestExport.relativePath)}`
+        ...selectedExport,
+        sourceUrl: `/api/reel/source?path=${encodeURIComponent(selectedExport.relativePath)}`
       },
       media,
       settings
@@ -1278,15 +1287,18 @@ async function routeRequest(request, response) {
   if (request.method === 'PUT' && url.pathname === '/api/reel/settings') {
     const body = await readRequestBody(request);
     const payload = JSON.parse(body || '{}');
-    const latestExport = await findLatestValidRenderExport(currentProjectDirectory);
-    if (!latestExport) {
-      sendJson(response, 409, { error: 'No final video export is available for Reel Mode.' });
+    const requestedSource = String(payload.sourceVideo || payload.settings?.sourceVideo || '');
+    const selectedExport = requestedSource
+      ? await findValidRenderExport(currentProjectDirectory, requestedSource)
+      : await findLatestValidRenderExport(currentProjectDirectory);
+    if (!selectedExport) {
+      sendJson(response, 409, { error: 'The selected final video export is no longer available.' });
       return;
     }
-    const media = await probeReelSource(latestExport.outputPath);
+    const media = await probeReelSource(selectedExport.outputPath);
     const result = await saveReelSettings(currentProjectDirectory, {
       ...(payload.settings || {}),
-      sourceVideo: latestExport.relativePath
+      sourceVideo: selectedExport.relativePath
     }, media.duration);
     sendJson(response, 200, {
       saved: true,
@@ -1304,22 +1316,25 @@ async function routeRequest(request, response) {
     const body = await readRequestBody(request);
     const payload = JSON.parse(body || '{}');
     const project = await readCurrentProject();
-    const latestExport = await findLatestValidRenderExport(currentProjectDirectory);
-    if (!latestExport) {
-      sendJson(response, 409, { error: 'No final video export is available for Reel Mode.' });
+    const requestedSource = String(payload.sourceVideo || payload.settings?.sourceVideo || '');
+    const selectedExport = requestedSource
+      ? await findValidRenderExport(currentProjectDirectory, requestedSource)
+      : await findLatestValidRenderExport(currentProjectDirectory);
+    if (!selectedExport) {
+      sendJson(response, 409, { error: 'The selected final video export is no longer available.' });
       return;
     }
-    const media = await probeReelSource(latestExport.outputPath);
+    const media = await probeReelSource(selectedExport.outputPath);
     const saved = await saveReelSettings(currentProjectDirectory, {
       ...(payload.settings || {}),
-      sourceVideo: latestExport.relativePath
+      sourceVideo: selectedExport.relativePath
     }, media.duration);
     const watermarkImagePath = saved.settings.watermark.enabled && saved.settings.watermark.type === 'image'
       ? resolveReelProjectPath(currentProjectDirectory, saved.settings.watermark.imagePath)
       : '';
     const job = await startReelExport(currentProjectDirectory, {
       projectName: project.name,
-      sourcePath: latestExport.outputPath,
+      sourcePath: selectedExport.outputPath,
       media,
       settings: saved.settings,
       watermarkImagePath,
@@ -1718,6 +1733,15 @@ function countRunningHeadlessJobs() {
     if (job.status === 'running') count += 1;
   }
   return count;
+}
+
+function selectReelRenderSource(sources, requestedSource = '') {
+  const requested = String(requestedSource || '').trim().replaceAll('\\', '/').replace(/^\/+/, '');
+  if (requested) {
+    const selected = sources.find((item) => item.relativePath === requested);
+    if (selected) return selected;
+  }
+  return sources[0] || null;
 }
 
 function findLatestHeadlessJob(projectPath = '') {

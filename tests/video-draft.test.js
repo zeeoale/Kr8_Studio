@@ -8,11 +8,13 @@ import {
   buildRenderMetadata,
   buildConcatList,
   buildCompositeFfmpegArgs,
+  buildDirectVideoBasename,
   buildDirectFfmpegArgs,
   buildFfmpegArgs,
   cancelDirectVideoSession,
   createDraftVideoPlan,
-  getRenderMetadataPath
+  getRenderMetadataPath,
+  nextAvailableVideoPath
 } from '../src/exports/videoDraft.js';
 
 test('buildFfmpegArgs creates an MP4 draft command from a concat list', () => {
@@ -196,6 +198,30 @@ test('getRenderMetadataPath writes metadata next to the mp4', () => {
   assert.equal(
     getRenderMetadataPath('C:/project/exports/videos/demo.mp4'),
     'C:/project/exports/videos/demo.render.json'
+  );
+});
+
+test('direct export filenames preserve aspect ratio identity', () => {
+  const common = {
+    projectName: 'Same Song', startTimestamp: 0, frameCount: 9000,
+    frameFormat: 'raw-rgba', videoEncoder: 'h264_nvenc'
+  };
+  const landscape = buildDirectVideoBasename({ ...common, width: 1920, height: 1080 });
+  const portrait = buildDirectVideoBasename({ ...common, width: 1080, height: 1920 });
+
+  assert.match(landscape, /same-song-16_9-/);
+  assert.match(portrait, /same-song-9_16-/);
+  assert.notEqual(landscape, portrait);
+});
+
+test('direct export allocation never overwrites an existing aspect variant', async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'kr8-video-name-'));
+  const basename = 'same-song-9_16-00m00s00-9000f-raw-nvenc.mp4';
+  await writeFile(path.join(directory, basename), 'existing');
+
+  assert.equal(
+    path.basename(await nextAvailableVideoPath(directory, basename)),
+    'same-song-9_16-00m00s00-9000f-raw-nvenc-2.mp4'
   );
 });
 

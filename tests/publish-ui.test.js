@@ -13,6 +13,14 @@ test('Reel Mode exposes a real Publish command', async () => {
   assert.match(js, /\/api\/publish\/context/);
 });
 
+test('Reel Mode exposes a render-history source selector', async () => {
+  const html = await readFile(path.join(root, 'src', 'editor', 'public', 'reel', 'index.html'), 'utf8');
+  const js = await readFile(path.join(root, 'src', 'editor', 'public', 'reel', 'reel.js'), 'utf8');
+  assert.match(html, /id="sourceSelect"/);
+  assert.match(js, /sourceVideo: state\.context\.source\.relativePath/);
+  assert.match(js, /\/api\/reel\/context\$\{query\}/);
+});
+
 test('Publish window contains required account, draft warning, confirmation and progress controls', async () => {
   const html = await readFile(path.join(root, 'src', 'editor', 'public', 'publish', 'index.html'), 'utf8');
   assert.match(html, /Connect TikTok/);

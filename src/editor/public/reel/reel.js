@@ -8,7 +8,7 @@ const state = {
 };
 
 const elements = Object.fromEntries([
-  'projectName', 'sourceName', 'sourcePath', 'videoStage', 'videoPreview', 'watermarkPreview',
+  'projectName', 'sourceSelect', 'sourcePath', 'videoStage', 'videoPreview', 'watermarkPreview',
   'playButton', 'timeLabel', 'seekSlider', 'trimStartInput', 'trimEndInput', 'trimStartSlider',
   'trimEndSlider', 'trimSummary', 'resetTrimButton', 'videoFadeInInput', 'videoFadeOutInput',
   'audioFadeInInput', 'audioFadeOutInput', 'volumeInput', 'volumeOutput', 'watermarkEnabledInput',
@@ -35,6 +35,7 @@ elements.copyPathButton.addEventListener('click', copyResultPath);
 elements.openFolderButton.addEventListener('click', openResultFolder);
 elements.publishButton.addEventListener('click', openPublishWindow);
 elements.watermarkImageInput.addEventListener('change', importWatermarkImage);
+elements.sourceSelect.addEventListener('change', changeSourceExport);
 window.addEventListener('resize', () => {
   fitVideoStage();
   updatePreview();
@@ -55,10 +56,11 @@ for (const input of [
 
 await loadContext();
 
-async function loadContext() {
+async function loadContext(sourceVideo = '') {
   await refreshPublishAvailability();
-  setStatus('Loading latest final export...');
-  const response = await fetch('/api/reel/context');
+  setStatus(sourceVideo ? 'Loading selected final export...' : 'Loading final exports...');
+  const query = sourceVideo ? `?source=${encodeURIComponent(sourceVideo)}` : '';
+  const response = await fetch(`/api/reel/context${query}`);
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || 'Unable to load Reel Mode.');
   if (!payload.available) {
@@ -70,14 +72,44 @@ async function loadContext() {
   state.context = payload;
   state.settings = payload.settings;
   elements.projectName.textContent = payload.projectName;
-  elements.sourceName.textContent = payload.source.relativePath.split('/').at(-1);
+  renderSourceOptions(payload.sources || [], payload.source.relativePath);
   elements.sourcePath.textContent = payload.source.outputPath;
   elements.sourcePath.title = payload.source.outputPath;
+  elements.videoPreview.pause();
   elements.videoPreview.src = payload.source.sourceUrl;
   fitVideoStage();
   applySettingsToControls();
   updatePreview();
   setStatus('Reel Mode ready. Original export is read-only.');
+}
+
+async function changeSourceExport() {
+  const sourceVideo = elements.sourceSelect.value;
+  if (!sourceVideo || sourceVideo === state.context?.source?.relativePath) return;
+  elements.sourceSelect.disabled = true;
+  try {
+    await loadContext(sourceVideo);
+    setStatus('Final source changed. Reel settings now target the selected export.');
+  } catch (error) {
+    setStatus(`Unable to change source: ${shortError(error.message || error)}`);
+    renderSourceOptions(state.context?.sources || [], state.context?.source?.relativePath || '');
+  } finally {
+    elements.sourceSelect.disabled = false;
+  }
+}
+
+function renderSourceOptions(sources, selectedPath) {
+  elements.sourceSelect.innerHTML = '';
+  for (const source of sources) {
+    const option = document.createElement('option');
+    option.value = source.relativePath;
+    const filename = source.relativePath.split('/').at(-1);
+    const dimensions = source.width > 0 && source.height > 0 ? `${source.width}x${source.height}` : 'legacy size';
+    const ratio = source.aspectRatio || 'unknown ratio';
+    option.textContent = `${ratio} | ${dimensions} | ${filename}`;
+    option.selected = source.relativePath === selectedPath;
+    elements.sourceSelect.append(option);
+  }
 }
 
 function syncVideoMetadata() {
@@ -252,7 +284,10 @@ function seekPreview(time) {
 async function saveSettings() {
   updateSettingsFromControls();
   const response = await fetch('/api/reel/settings', {
-    method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ settings: state.settings })
+    method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+      sourceVideo: state.context.source.relativePath,
+      settings: state.settings
+    })
   });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || 'Unable to save Reel settings.');
@@ -290,7 +325,10 @@ async function startExport() {
   elements.exportStatus.textContent = 'Starting FFmpeg Reel export...';
   try {
     const response = await fetch('/api/reel/export/start', {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ settings: state.settings })
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+        sourceVideo: state.context.source.relativePath,
+        settings: state.settings
+      })
     });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || 'Reel export failed to start.');

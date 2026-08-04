@@ -3,6 +3,8 @@ import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 import path from 'node:path';
 
+import { formatAspectRatioToken } from './aspectRatio.js';
+
 import { assertAbsolutePathWithinRoot, resolveRelativePathWithinRoot } from '../security/pathPolicy.js';
 
 export const SDR_BT709_FILTER = 'scale=out_color_matrix=bt709:out_range=tv,setparams=range=tv:colorspace=bt709:color_trc=bt709:color_primaries=bt709,format=yuv420p';
@@ -135,13 +137,17 @@ export async function createDirectVideoSession(projectDirectory, options = {}) {
   if (audioPath) await access(audioPath, fsConstants.F_OK);
   if (compositeVideoPath) await access(compositeVideoPath, fsConstants.F_OK);
 
-  const suffix = compositeVideoPath
-    ? (videoEncoder === 'h264_nvenc' ? 'composite-nvenc' : 'composite-cpu')
-    : frameFormat === 'raw-rgba'
-    ? (videoEncoder === 'h264_nvenc' ? 'raw-nvenc' : 'raw-cpu')
-    : 'direct';
-  const basename = `${slugify(options.projectName || 'kr8-direct')}-${formatTimestamp(startTimestamp)}-${frameCount}f-${suffix}.mp4`;
-  const outputPath = path.join(videosDir, basename);
+  const basename = buildDirectVideoBasename({
+    ...options,
+    startTimestamp,
+    frameCount,
+    frameFormat,
+    width,
+    height,
+    compositeVideoPath,
+    videoEncoder
+  });
+  const outputPath = await nextAvailableVideoPath(videosDir, basename);
   const args = compositeVideoPath ? buildCompositeFfmpegArgs({
     outputPath,
     fps,
@@ -200,6 +206,34 @@ export async function createDirectVideoSession(projectDirectory, options = {}) {
     },
     ...processState
   };
+}
+
+export function buildDirectVideoBasename(options = {}) {
+  const frameFormat = options.frameFormat === 'raw-rgba' ? 'raw-rgba' : 'png';
+  const videoEncoder = options.videoEncoder === 'h264_nvenc' ? 'h264_nvenc' : 'libx264';
+  const suffix = options.compositeVideoPath
+    ? (videoEncoder === 'h264_nvenc' ? 'composite-nvenc' : 'composite-cpu')
+    : frameFormat === 'raw-rgba'
+      ? (videoEncoder === 'h264_nvenc' ? 'raw-nvenc' : 'raw-cpu')
+      : 'direct';
+  const aspect = formatAspectRatioToken(options.width || 1920, options.height || 1080);
+  const frameCount = Math.max(1, Math.round(Number(options.frameCount || 1)));
+  const startTimestamp = Math.max(0, Number(options.startTimestamp || 0));
+  return `${slugify(options.projectName || 'kr8-direct')}-${aspect}-${formatTimestamp(startTimestamp)}-${frameCount}f-${suffix}.mp4`;
+}
+
+export async function nextAvailableVideoPath(directory, basename) {
+  const parsed = path.parse(path.basename(String(basename || 'kr8-export.mp4')));
+  for (let index = 1; index < 10_000; index += 1) {
+    const filename = index === 1 ? `${parsed.name}${parsed.ext}` : `${parsed.name}-${index}${parsed.ext}`;
+    const candidate = path.join(directory, filename);
+    try {
+      await access(candidate, fsConstants.F_OK);
+    } catch {
+      return candidate;
+    }
+  }
+  throw new Error('Unable to allocate a collision-safe video export filename.');
 }
 
 export async function appendDirectVideoFrames(session, frames = []) {

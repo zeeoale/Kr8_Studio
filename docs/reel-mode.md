@@ -1,6 +1,6 @@
 # Reel Mode 0.1
 
-Reel Mode is a non-destructive finishing editor for the latest final MP4 produced by the currently open Kr8 project. It does not read layers, scenes, audio bindings, or the main composition timeline, and it never overwrites the source video.
+Reel Mode is a non-destructive finishing editor for a completed MP4 produced by the currently open Kr8 project. It does not read layers, scenes, audio bindings, or the main composition timeline, and it never overwrites the source video.
 
 ## Boundary
 
@@ -9,13 +9,13 @@ The integration flow is deliberately narrow:
 ```text
 current project
   -> exports/videos/*.render.json
-  -> latest existing MP4
+  -> selected existing MP4
   -> Reel Mode window
   -> FFmpeg finishing pass
   -> exports/reels/<project>_reel[_N].mp4
 ```
 
-`src/exports/history.js` remains the source of truth for completed Kr8 renders. `findLatestValidRenderExport()` ignores orphan metadata and returns only an existing non-empty video.
+`src/exports/history.js` remains the source of truth for completed Kr8 renders. Invalid or orphaned metadata is ignored. Reel Mode restores its saved source when available, otherwise it selects the latest existing non-empty video, and its source picker can switch between retained renders.
 
 `src/reel/core.js` owns settings normalization, trim/fade calculations, safe project-relative paths, PNG watermark import, and persistence. Settings are stored at `exports/reel/reel-mode.json`; `project.json` is not changed.
 
@@ -25,7 +25,7 @@ current project
 
 ## Supported finishing operations
 
-- one source: the latest valid final Kr8 MP4;
+- selectable source from the valid final Kr8 MP4 render history;
 - start/end trim;
 - video fade-in and fade-out from 0 to 5 seconds;
 - audio fade-in and fade-out from 0 to 5 seconds;
@@ -52,6 +52,8 @@ Output arguments preserve H.264, `yuv420p`, TV/limited range, BT.709 primaries/t
 ## Files and safety
 
 - Source: read-only under `exports/videos/`.
+- New final MP4 names include a reduced aspect token such as `16_9`, `9_16`, or `1_1`; existing names remain compatible.
+- Final MP4 allocation is collision-safe, so a repeated render receives `-2`, `-3`, and later suffixes instead of overwriting an existing file.
 - Settings: `exports/reel/reel-mode.json`.
 - Imported watermark PNG: `exports/reel/assets/` with collision-safe names.
 - Final result: `exports/reels/` with `_2`, `_3`, and later suffixes when needed.
@@ -59,4 +61,4 @@ Output arguments preserve H.264, `yuv420p`, TV/limited range, BT.709 primaries/t
 
 ## Remaining limits
 
-Preview fade rendering is intentionally lightweight and approximates the FFmpeg result. Text watermark export uses FFmpeg's available default font; selecting a project font for Reel watermark text is not part of 0.1. The source selector is intentionally absent because Reel Mode only accepts the latest final export.
+Preview fade rendering is intentionally lightweight and approximates the FFmpeg result. Text watermark export uses FFmpeg's available default font; selecting a project font for Reel watermark text is not part of 0.1. Reel Mode lists up to the 100 newest valid final renders for the current project.

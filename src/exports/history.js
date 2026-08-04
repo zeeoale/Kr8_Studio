@@ -3,6 +3,7 @@ import { constants as fsConstants } from 'node:fs';
 import path from 'node:path';
 
 import { assertAbsolutePathWithinRoot, resolveRelativePathWithinRoot } from '../security/pathPolicy.js';
+import { formatAspectRatioLabel } from './aspectRatio.js';
 
 export async function listRenderHistory(projectDirectory, options = {}) {
   const limit = Math.max(1, Math.min(100, Math.round(Number(options.limit || 20))));
@@ -29,15 +30,28 @@ export async function listRenderHistory(projectDirectory, options = {}) {
 }
 
 export async function findLatestValidRenderExport(projectDirectory) {
-  const history = await listRenderHistory(projectDirectory, { limit: 100 });
+  const history = await listValidRenderExports(projectDirectory, { limit: 100 });
+  return history[0] || null;
+}
+
+export async function findValidRenderExport(projectDirectory, relativePath) {
+  const requested = normalizeRenderRelativePath(relativePath);
+  if (!requested) return null;
+  const history = await listValidRenderExports(projectDirectory, { limit: 100 });
+  return history.find((item) => item.relativePath === requested) || null;
+}
+
+export async function listValidRenderExports(projectDirectory, options = {}) {
+  const history = await listRenderHistory(projectDirectory, { limit: options.limit || 100 });
+  const valid = [];
   for (const item of history) {
     if (!item.outputPath || item.sizeBytes <= 0) continue;
     try {
       const info = await stat(item.outputPath);
-      if (info.isFile() && info.size > 0) return item;
+      if (info.isFile() && info.size > 0) valid.push(item);
     } catch {}
   }
-  return null;
+  return valid;
 }
 
 async function readRenderMetadata(projectDirectory, metadataPath) {
@@ -57,6 +71,8 @@ async function readRenderMetadata(projectDirectory, metadataPath) {
       sizeBytes = (await stat(outputPath)).size;
     } catch {}
 
+    const width = Math.max(0, Math.round(Number(metadata.width || 0)));
+    const height = Math.max(0, Math.round(Number(metadata.height || 0)));
     return {
       rendererMode: String(metadata.rendererMode || 'unknown'),
       createdAt: String(metadata.createdAt || ''),
@@ -71,10 +87,17 @@ async function readRenderMetadata(projectDirectory, metadataPath) {
       frameCount: Number(metadata.frameCount || 0),
       expectedFrameCount: Number(metadata.expectedFrameCount || metadata.frameCount || 0),
       hasAudio: Boolean(metadata.hasAudio),
+      width,
+      height,
+      aspectRatio: width > 0 && height > 0 ? formatAspectRatioLabel(width, height) : '',
       benchmark: metadata.benchmark && typeof metadata.benchmark === 'object' ? metadata.benchmark : null,
       sizeBytes
     };
   } catch {
     return null;
   }
+}
+
+function normalizeRenderRelativePath(value) {
+  return String(value || '').trim().replaceAll('\\', '/').replace(/^\/+/, '');
 }

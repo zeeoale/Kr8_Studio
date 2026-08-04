@@ -4,7 +4,11 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { findLatestValidRenderExport } from '../src/exports/history.js';
+import {
+  findLatestValidRenderExport,
+  findValidRenderExport,
+  listValidRenderExports
+} from '../src/exports/history.js';
 import {
   calculateReelTiming,
   loadReelSettings,
@@ -38,6 +42,26 @@ test('findLatestValidRenderExport ignores metadata whose video is missing', asyn
   await writeRenderMetadata(videosDirectory, 'missing', '2026-07-19T11:00:00.000Z');
 
   assert.equal(await findLatestValidRenderExport(projectDirectory), null);
+});
+
+test('render history preserves and selects landscape and portrait exports independently', async () => {
+  const projectDirectory = await createProjectDirectory();
+  const videosDirectory = path.join(projectDirectory, 'exports', 'videos');
+  for (const [name, width, height, createdAt] of [
+    ['song-9_16', 1080, 1920, '2026-08-04T10:00:00.000Z'],
+    ['song-16_9', 1920, 1080, '2026-08-04T11:00:00.000Z']
+  ]) {
+    await writeFile(path.join(videosDirectory, `${name}.mp4`), name);
+    await writeRenderMetadata(videosDirectory, name, createdAt, { width, height });
+  }
+
+  const sources = await listValidRenderExports(projectDirectory);
+  const portrait = await findValidRenderExport(projectDirectory, 'exports\\videos\\song-9_16.mp4');
+
+  assert.deepEqual(sources.map((source) => source.aspectRatio), ['16:9', '9:16']);
+  assert.equal(portrait.relativePath, 'exports/videos/song-9_16.mp4');
+  assert.equal(portrait.width, 1080);
+  assert.equal(portrait.height, 1920);
 });
 
 test('normalizeReelSettings validates trim and clamps fades on short videos', () => {
@@ -223,7 +247,7 @@ async function createProjectDirectory() {
   return projectDirectory;
 }
 
-async function writeRenderMetadata(videosDirectory, name, createdAt) {
+async function writeRenderMetadata(videosDirectory, name, createdAt, options = {}) {
   await writeFile(path.join(videosDirectory, `${name}.render.json`), JSON.stringify({
     type: 'kr8-render-metadata',
     createdAt,
@@ -231,6 +255,7 @@ async function writeRenderMetadata(videosDirectory, name, createdAt) {
     duration: 10,
     fps: 30,
     frameCount: 300,
-    hasAudio: true
+    hasAudio: true,
+    ...options
   }));
 }
